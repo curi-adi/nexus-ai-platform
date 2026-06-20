@@ -11,49 +11,55 @@ def build(embedder, vstore, mstore, kg) -> None:
     # ── Chunks ──────────────────────────────────────────────────────────────
     chunk_rows = [
         dict(
-            content="Patrick Mahomes is the active quarterback (QB) for the Kansas City Chiefs. "
-                    "He has won multiple NFL MVP awards and Super Bowl championships. "
-                    "Mahomes is one of the most marketable athletes in professional sports.",
+            content="LeBron James is a forward for the Los Angeles Lakers in the NBA. "
+                    "He is a four-time NBA champion, four-time NBA MVP, and the all-time "
+                    "leading scorer in NBA history. James is one of the most marketable "
+                    "athletes in professional sports.",
             domain=DataDomain.SPORTS,
             sensitivity=SensitivityLevel.PUBLIC,
             metadata={},
         ),
         dict(
-            content="New Jersey (NJ) requires 24-hour advance notice plus a compliance sign-off "
-                    "from the legal team before any boosted-odds promotion can be launched. "
-                    "Failure to comply may result in fines and suspension of betting operations.",
+            content="California (CA) requires NBA teams and their analytics partners to comply "
+                    "with CCPA when processing player performance data. Any biometric or "
+                    "health-related player data collected during training or games must have "
+                    "explicit written consent per the NBA Collective Bargaining Agreement (CBA).",
             domain=DataDomain.COMPLIANCE,
             sensitivity=SensitivityLevel.INTERNAL,
-            metadata={"jurisdiction": "NJ"},
+            metadata={"jurisdiction": "CA"},
         ),
         dict(
-            content="Pennsylvania (PA) boosted-odds promotions require a state filing 48 hours "
-                    "ahead of the promotion launch. All promotional materials must be pre-approved "
-                    "by the Pennsylvania Gaming Control Board.",
+            content="New York (NY) teams must obtain explicit consent from the NBA Players "
+                    "Association before sharing player biometric data with third-party analytics "
+                    "platforms. All data-sharing agreements must be filed with the state "
+                    "attorney general's office annually.",
             domain=DataDomain.COMPLIANCE,
             sensitivity=SensitivityLevel.INTERNAL,
-            metadata={"jurisdiction": "PA"},
+            metadata={"jurisdiction": "NY"},
         ),
         dict(
-            content="The OddsBoost feature supports player-prop markets, game-outcome markets, "
-                    "and parlay combinations. Boosts are applied at the bet-slip level and are "
-                    "subject to jurisdiction-specific limits and compliance checks.",
+            content="The PlayerIQ feature supports per-game performance analytics, shot-chart "
+                    "visualization, and lineup optimization recommendations. Metrics are updated "
+                    "within two hours of game completion and are subject to team-specific data "
+                    "sharing agreements under the NBA CBA.",
             domain=DataDomain.PRODUCT,
             sensitivity=SensitivityLevel.INTERNAL,
             metadata={},
         ),
         dict(
-            content="Responsible-gaming rules mandate spend limits for all users, self-exclusion "
-                    "options accessible at any time, and mandatory cool-down periods after "
-                    "loss-limit thresholds are crossed. Violation triggers account suspension.",
+            content="The NBA Collective Bargaining Agreement (CBA) mandates that player salary "
+                    "cap data and contract information shared with third-party platforms must be "
+                    "anonymized unless the player has signed an individual data authorization. "
+                    "Violations may result in league fines and loss of analytics access.",
             domain=DataDomain.COMPLIANCE,
             sensitivity=SensitivityLevel.INTERNAL,
             metadata={},
         ),
         dict(
-            content="INTERNAL — Incident postmortem: payout bug on 2026-03-15. "
-                    "Affected customer a@b.com received a duplicate payout. "
-                    "Root cause: race condition in settlement worker. Resolved in hotfix v2.3.1.",
+            content="INTERNAL — Incident postmortem: stats sync failure on 2026-04-10. "
+                    "Affected platform: Lakers analytics dashboard showed stale box-score data "
+                    "for 6 hours. Root cause: race condition in the stats ingestion worker. "
+                    "Resolved in hotfix v2.3.1.",
             domain=DataDomain.OPERATIONS,
             sensitivity=SensitivityLevel.RESTRICTED,
             metadata={},
@@ -77,84 +83,84 @@ def build(embedder, vstore, mstore, kg) -> None:
     sports_chunk = stored_chunks[0]
 
     # ── Entities ─────────────────────────────────────────────────────────────
-    mahomes = Entity(
-        name="Patrick Mahomes",
-        canonical_name="Patrick Mahomes",
+    lebron = Entity(
+        name="LeBron James",
+        canonical_name="LeBron James",
         entity_type=EntityType.PLAYER,
-        aliases=["P. Mahomes", "Mahomes"],
+        aliases=["LeBron", "King James"],
         domain=DataDomain.SPORTS,
-        properties={"position": "QB", "status": "active"},
-        embedding=embedder.encode("Patrick Mahomes"),
+        properties={"position": "SF", "status": "active"},
+        embedding=embedder.encode("LeBron James"),
     )
-    chiefs = Entity(
-        name="Kansas City Chiefs",
-        canonical_name="Kansas City Chiefs",
+    lakers = Entity(
+        name="Los Angeles Lakers",
+        canonical_name="Los Angeles Lakers",
         entity_type=EntityType.TEAM,
-        aliases=["Chiefs", "KC"],
+        aliases=["Lakers", "LA Lakers"],
         domain=DataDomain.SPORTS,
-        properties={"city": "Kansas City"},
-        embedding=embedder.encode("Kansas City Chiefs"),
+        properties={"city": "Los Angeles"},
+        embedding=embedder.encode("Los Angeles Lakers"),
     )
-    nfl = Entity(
-        name="NFL",
-        canonical_name="NFL",
+    nba = Entity(
+        name="NBA",
+        canonical_name="NBA",
         entity_type=EntityType.LEAGUE,
-        aliases=["National Football League"],
+        aliases=["National Basketball Association"],
         domain=DataDomain.SPORTS,
-        properties={"sport": "Football"},
-        embedding=embedder.encode("NFL"),
+        properties={"sport": "Basketball"},
+        embedding=embedder.encode("NBA"),
     )
-    nfl_mvp = Entity(
-        name="NFL MVP",
-        canonical_name="NFL MVP",
+    nba_mvp = Entity(
+        name="NBA MVP",
+        canonical_name="NBA MVP",
         entity_type=EntityType.MARKET,
         aliases=["Most Valuable Player"],
         domain=DataDomain.SPORTS,
-        properties={"type": "futures"},
-        embedding=embedder.encode("NFL MVP"),
+        properties={"type": "award"},
+        embedding=embedder.encode("NBA MVP"),
     )
-    boost_policy = Entity(
-        name="Boost Policy",
-        canonical_name="Boost Policy",
+    cba_policy = Entity(
+        name="CBA Data Policy",
+        canonical_name="CBA Data Policy",
         entity_type=EntityType.POLICY,
-        aliases=["OddsBoost Policy"],
-        properties={"version": "v4"},
-        embedding=embedder.encode("Boost Policy"),
+        aliases=["Collective Bargaining Agreement", "CBA"],
+        properties={"version": "2023"},
+        embedding=embedder.encode("CBA Data Policy"),
     )
-    new_jersey = Entity(
-        name="New Jersey",
-        canonical_name="New Jersey",
+    california = Entity(
+        name="California",
+        canonical_name="California",
         entity_type=EntityType.JURISDICTION,
-        aliases=["NJ"],
-        properties={"compliance": "high"},
-        embedding=embedder.encode("New Jersey"),
+        aliases=["CA"],
+        properties={"compliance": "CCPA"},
+        embedding=embedder.encode("California"),
     )
-    oddsboost = Entity(
-        name="OddsBoost",
-        canonical_name="OddsBoost",
+    playeriq = Entity(
+        name="PlayerIQ",
+        canonical_name="PlayerIQ",
         entity_type=EntityType.PRODUCT,
-        aliases=["Odds Boost"],
-        properties={"version": "3.2"},
-        embedding=embedder.encode("OddsBoost"),
+        aliases=["Player IQ"],
+        properties={"version": "2.1"},
+        embedding=embedder.encode("PlayerIQ"),
     )
 
-    for e in [mahomes, chiefs, nfl, nfl_mvp, boost_policy, new_jersey, oddsboost]:
+    for e in [lebron, lakers, nba, nba_mvp, cba_policy, california, playeriq]:
         kg.upsert_entity(e)
 
     # ── Relationships ─────────────────────────────────────────────────────────
     rels = [
-        Relationship(source_entity_id=mahomes.id,      target_entity_id=chiefs.id,      relation_type="PLAYS_FOR"),
-        Relationship(source_entity_id=chiefs.id,       target_entity_id=nfl.id,         relation_type="COMPETES_IN"),
-        Relationship(source_entity_id=nfl_mvp.id,      target_entity_id=boost_policy.id, relation_type="GOVERNED_BY"),
-        Relationship(source_entity_id=boost_policy.id, target_entity_id=new_jersey.id,  relation_type="APPLIES_IN"),
-        Relationship(source_entity_id=oddsboost.id,    target_entity_id=nfl_mvp.id,     relation_type="SUPPORTS"),
+        Relationship(source_entity_id=lebron.id,      target_entity_id=lakers.id,     relation_type="PLAYS_FOR"),
+        Relationship(source_entity_id=lakers.id,      target_entity_id=nba.id,         relation_type="COMPETES_IN"),
+        Relationship(source_entity_id=nba_mvp.id,     target_entity_id=cba_policy.id,  relation_type="GOVERNED_BY"),
+        Relationship(source_entity_id=cba_policy.id,  target_entity_id=california.id,  relation_type="APPLIES_IN"),
+        Relationship(source_entity_id=playeriq.id,    target_entity_id=nba_mvp.id,     relation_type="TRACKS"),
     ]
     for r in rels:
         kg.upsert_relationship(r)
 
     # ── Cross-links: entity ↔ chunk ──────────────────────────────────────────
-    mahomes.source_chunks.append(sports_chunk.id)
-    sports_chunk.entity_refs.append(mahomes.id)
+    lebron.source_chunks.append(sports_chunk.id)
+    sports_chunk.entity_refs.append(lebron.id)
 
-    chiefs.source_chunks.append(sports_chunk.id)
-    sports_chunk.entity_refs.append(chiefs.id)
+    lakers.source_chunks.append(sports_chunk.id)
+    sports_chunk.entity_refs.append(lakers.id)

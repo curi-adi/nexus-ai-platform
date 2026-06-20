@@ -75,7 +75,7 @@ claims: Dict[str, AccessClaim] = {
         principal_id="B",
         domains=[DataDomain.SPORTS, DataDomain.PRODUCT, DataDomain.COMPLIANCE],
         max_sensitivity=SensitivityLevel.INTERNAL,
-        attributes={"jurisdiction": "NJ"},
+        attributes={"jurisdiction": "CA"},
     ),
 }
 agents: Dict[str, ExtractiveAgent] = {
@@ -175,7 +175,7 @@ def get_info():
         "embedder": embedder.model_id,
         "agents": {
             "A": {"label": "Full Access",  "sensitivity": "RESTRICTED", "jurisdiction": "Global"},
-            "B": {"label": "NJ Analyst",   "sensitivity": "INTERNAL",   "jurisdiction": "NJ only"},
+            "B": {"label": "CA Analyst",   "sensitivity": "INTERNAL",   "jurisdiction": "CA only"},
         },
     }
 
