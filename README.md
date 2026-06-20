@@ -6,6 +6,14 @@ Built for regulated environments where governance, provenance, and explainabilit
 
 ---
 
+## Demo
+
+https://github.com/curi-adi/nexus-ai-platform/raw/main/nexus-walkthrough.mp4
+
+See [WALKTHROUGH.md](WALKTHROUGH.md) for a step-by-step guided tour.
+
+---
+
 ## Architecture
 
 ```
@@ -93,11 +101,11 @@ AccessClaim(principal_id="A", domains=all_domains,
             max_sensitivity=SensitivityLevel.RESTRICTED,
             attributes={"jurisdiction": "*"})
 
-# Agent B — restricted analyst
+# Agent B — CA Analyst (restricted)
 AccessClaim(principal_id="B",
-            domains=[DataDomain.SPORTS, DataDomain.COMPLIANCE],
+            domains=[DataDomain.SPORTS, DataDomain.PRODUCT, DataDomain.COMPLIANCE],
             max_sensitivity=SensitivityLevel.INTERNAL,
-            attributes={"jurisdiction": "NJ"})
+            attributes={"jurisdiction": "CA"})
 ```
 
 Same query, different agents → different chunks returned. Every exclusion is recorded in the audit log.
@@ -203,7 +211,7 @@ The single-page UI at `http://localhost:8000` shows the full system in action:
 ### End-to-End Flow — what happens when you submit a query
 
 ```
-agent.think("Who is Patrick Mahomes?")
+agent.think("Who is LeBron James?")
   │
   ├─ 1. MemoryManager.retrieve_context(query)
   │       └─ WorkingMemory.search()      → recent turns matching the query
@@ -212,7 +220,7 @@ agent.think("Who is Patrick Mahomes?")
   │
   ├─ 2. HybridRetriever.search(req, claim)
   │       └─ anti_rag.classify(query, known_names)
-  │               → detects "Mahomes" in known_names → GRAPH strategy
+  │               → detects "LeBron" in known_names → GRAPH strategy
   │
   │       └─ dense_search()    → embed query → cosine similarity over VectorStore
   │       └─ bm25.search()     → term-frequency match over all chunk tokens

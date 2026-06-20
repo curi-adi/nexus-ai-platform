@@ -4,6 +4,45 @@ A self-guided demo. Run each query, observe the result, and compare where indica
 
 ---
 
+## The Two Agents — What, Why, and How
+
+The demo runs two agents side by side: **Agent A** and **Agent B**. They share the same knowledge store but see different results for the same query. This is the core governance demonstration.
+
+### What they are
+
+| | Agent A | Agent B |
+|---|---|---|
+| Label | Full Access | CA Analyst |
+| Domains | All (Sports, Compliance, Product, Operations) | Sports, Product, Compliance only |
+| Max sensitivity | RESTRICTED (sees everything) | INTERNAL (blocked from CONFIDENTIAL and RESTRICTED) |
+| Jurisdiction | Global (all regions) | California only |
+
+### Why two agents?
+
+To prove that access control is **real and enforced at the retrieval layer** — not bolted on at the application layer. The same query, the same knowledge store, two different agents → two different result sets. Agent B never receives chunks it isn't allowed to see — they are removed inside the retriever before the answer is generated.
+
+### How it works under the hood
+
+Every knowledge chunk carries three access tags:
+- **domain** — e.g. `COMPLIANCE`, `SPORTS`, `OPERATIONS`
+- **sensitivity** — `PUBLIC` < `INTERNAL` < `CONFIDENTIAL` < `RESTRICTED`
+- **jurisdiction** — e.g. `CA`, `NY` (or unset = global)
+
+Every agent holds an `AccessClaim` declaring what it is permitted to see. The ABAC filter runs **after ranking but before results leave the retriever**:
+
+```
+retrieved chunks → RRF fusion → ABAC filter → results reach agent
+                                     ↑
+                              checks 3 conditions:
+                              1. chunk.domain in claim.domains
+                              2. chunk.sensitivity ≤ claim.max_sensitivity
+                              3. chunk.jurisdiction matches claim.jurisdiction (or is unset)
+```
+
+Any chunk that fails a check is silently dropped. The count of excluded chunks and the reason are written to the **immutable audit log** — so there is always a record of what was blocked and why.
+
+---
+
 ## Step 0 — Start the App
 
 Open a terminal and run:
