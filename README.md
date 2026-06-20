@@ -198,6 +198,245 @@ The single-page UI at `http://localhost:8000` shows the full system in action:
 
 ---
 
+## Code Walkthrough
+
+### End-to-End Flow — what happens when you submit a query
+
+```
+agent.think("Who is Patrick Mahomes?")
+  │
+  ├─ 1. MemoryManager.retrieve_context(query)
+  │       └─ WorkingMemory.search()      → recent turns matching the query
+  │       └─ EpisodicMemory.recall()     → compressed past episodes
+  │       └─ SemanticMemory.search()     → long-range vector recall
+  │
+  ├─ 2. HybridRetriever.search(req, claim)
+  │       └─ anti_rag.classify(query, known_names)
+  │               → detects "Mahomes" in known_names → GRAPH strategy
+  │
+  │       └─ dense_search()    → embed query → cosine similarity over VectorStore
+  │       └─ bm25.search()     → term-frequency match over all chunk tokens
+  │       └─ graph_search()    → resolve entity → BFS on KG → chunk IDs of neighbours
+  │
+  │       └─ rrf([dense_ids, sparse_ids, graph_ids])
+  │               → merge three ranked lists by reciprocal rank position
+  │
+  │       └─ ABAC filter: permits(claim, chunk) for each fused chunk
+  │               → drop chunks where sensitivity > claim.max_sensitivity
+  │               → drop chunks where jurisdiction not in claim.attributes
+  │
+  ├─ 3. Agent builds prompt from context + retrieved chunks
+  │
+  ├─ 4. Agent generates answer (extractive or via Claude API)
+  │
+  └─ 5. MemoryManager.store(query, answer)
+          └─ WorkingMemory.add()         → push to ring buffer
+          └─ EpisodicMemory.record()     → append trace, compress if buffer full
+```
+
+---
+
+### Module Reference
+
+#### `nexus/core/models.py` — Data contracts
+Every object in the system is a Pydantic model defined here. Key types:
+
+```python
+KnowledgeChunk      # a retrievable document fragment
+  .id               # UUID
+  .content          # raw text
+  .domain           # DataDomain enum (SPORTS, COMPLIANCE, OPERATIONS…)
+  .sensitivity      # SensitivityLevel enum (PUBLIC < INTERNAL < CONFIDENTIAL < RESTRICTED)
+  .entity_refs      # List[str] — entity IDs mentioned in this chunk
+  .jurisdiction     # optional geographic scope
+
+Entity              # a node in the knowledge graph
+  .canonical_name   # primary name
+  .aliases          # List[str] — alternate names for resolution
+  .entity_type      # EntityType enum (PLAYER, TEAM, LEAGUE, REGULATION…)
+
+Relationship        # a typed edge in the knowledge graph
+  .source_entity_id
+  .target_entity_id
+  .relation_type    # e.g. "PLAYS_FOR", "GOVERNED_BY", "OPERATES_IN"
+  .weight           # float — used to prioritise BFS traversal
+
+AccessClaim         # what an agent is allowed to see
+  .principal_id
+  .domains          # List[DataDomain]
+  .max_sensitivity  # ceiling sensitivity level
+  .attributes       # {"jurisdiction": "NJ"} etc.
+
+RetrievalResult     # one ranked result
+  .chunk            # KnowledgeChunk
+  .score            # RRF score
+  .strategy         # which RetrievalStrategy produced this
+  .explanation      # "dense,graph" — which retrievers found it
+```
+
+---
+
+#### `nexus/retrieval/anti_rag.py` — The router
+```python
+def classify(query: str, known_names: Set[str]) -> RetrievalStrategy:
+```
+Scans the query tokens against `known_names` (all entity canonical names + aliases).
+- Any match → `GRAPH`
+- Math / definition keywords → `DIRECT`
+- Otherwise → `HYBRID`
+
+This runs before any embedding or index lookup — it's pure string matching, O(tokens).
+
+---
+
+#### `nexus/retrieval/retriever.py` — HybridRetriever
+Orchestrates the full retrieval pipeline.
+
+```python
+def search(self, req: RetrievalRequest, claim: AccessClaim):
+    strat = classify(req.query, self.known_names)
+
+    if strat in (DIRECT, STRUCTURED, CACHED):
+        return strat, []          # skip everything
+
+    dense  = dense_search(...)    # top-k by cosine similarity
+    sparse = self.bm25.search(...)# top-k by BM25 score
+    graph  = graph_search(...)    # top-k via KG BFS
+
+    fused  = rrf([dense_ids, sparse_ids, graph_ids])  # merge by rank
+
+    results = [r for r in fused if permits(claim, chunk)]  # ABAC
+
+    # expose for API without double-retrieval
+    self.last_strategy = strat
+    self.last_results  = results
+    self.last_excluded = excluded_count
+```
+
+The `last_*` fields let the FastAPI layer read retrieval metadata without calling search() a second time.
+
+---
+
+#### `nexus/retrieval/fusion.py` — RRF
+```python
+def rrf(ranked_lists: List[List[str]], k: int = 60) -> List[Tuple[str, float]]:
+```
+For each document ID, accumulates `1 / (k + rank)` across all lists. Returns a merged ranking sorted by total score. `k=60` is the standard constant that down-weights top-ranked outliers.
+
+Why RRF over score normalisation: dense similarity scores and BM25 scores are on incompatible scales. RRF uses rank position only — no calibration needed.
+
+---
+
+#### `nexus/graph/knowledge_graph.py` — KnowledgeGraph
+```python
+class KnowledgeGraph:
+    entities: Dict[str, Entity]              # id → Entity
+    by_canon: Dict[str, str]                 # canonical_name → id
+    by_alias: Dict[str, str]                 # alias → id
+    adj:      Dict[str, List[Tuple[str, float]]]  # id → [(neighbour_id, weight)]
+    _rels:    List[Relationship]             # full relationship objects for the API
+```
+
+`neighbors(seed_ids, max_hops, degree_cap)` runs BFS, prioritising the highest-weight edges at each node, up to `degree_cap` neighbours per hop and `max_hops` depth.
+
+`_rels` stores full `Relationship` objects separately from `adj` — the adjacency list only stores `(id, weight)` for fast BFS, losing the `relation_type` string. `_rels` preserves the typed edge for the KG canvas API.
+
+---
+
+#### `nexus/retrieval/graph_rag.py` — Graph RAG
+```python
+def graph_search(query, kg, embedder, known_names, top_k):
+    # 1. resolve entity seeds from query tokens
+    seeds = [kg.by_canon[t] for t in tokens if t in kg.by_canon]
+    seeds += [kg.by_alias[t] for t in tokens if t in kg.by_alias]
+
+    # 2. BFS expand from seeds
+    neighbourhood = kg.neighbors(seeds, max_hops=2, degree_cap=5)
+
+    # 3. collect chunks whose entity_refs intersect the neighbourhood
+    # 4. rank by hop distance (closer = higher score)
+```
+
+---
+
+#### `nexus/governance/access.py` — ABAC
+```python
+def permits(claim: AccessClaim, chunk: KnowledgeChunk) -> bool:
+    if chunk.domain not in claim.domains:            return False
+    if chunk.sensitivity > claim.max_sensitivity:    return False
+    if chunk.jurisdiction:
+        jur = claim.attributes.get("jurisdiction","*")
+        if jur != "*" and jur != chunk.jurisdiction: return False
+    return True
+```
+Three independent checks: domain allowlist, sensitivity ceiling, jurisdiction match. All must pass.
+
+---
+
+#### `nexus/memory/` — Three-tier memory
+
+**`working.py` — WorkingMemory**
+Ring buffer of the last N interactions (default N=10). `search()` does substring match over content. When the buffer is full, the oldest entry is evicted to episodic memory.
+
+**`episodic.py` — EpisodicMemory**
+Stores full `MemoryTrace` objects (query, answer, timestamp, chunks used). When the trace count exceeds a threshold, old traces are compressed via an extractive summariser (picks the highest-scoring sentence) and the originals are marked `compressed_into`. Compressed traces are retained as metadata; their content is replaced by the summary.
+
+**`semantic.py` — SemanticMemory**
+Embeds and stores chunks into the shared `VectorStore`. `search()` embeds the query and runs cosine similarity — enabling cross-session recall of anything previously ingested.
+
+**`manager.py` — MemoryManager**
+Coordinates all three tiers:
+- On retrieve: queries all three and merges results
+- On store: writes to working memory and episodic; semantic is populated during ingestion
+
+---
+
+#### `nexus/ingestion/pipeline.py` — Ingestion
+```
+raw text → Chunker (fixed-size with overlap)
+         → PII scanner (regex-based redaction)
+         → embed (HashingEmbedder or LocalEmbedder)
+         → VectorStore.add()
+         → MetadataStore.save_chunk()
+```
+The PII scanner redacts patterns for emails, phone numbers, SSNs, and credit card numbers before any chunk is stored.
+
+---
+
+#### `nexus/embeddings/embedder.py` — Pluggable embedders
+
+```python
+class HashingEmbedder:   # stdlib only — deterministic, no model download
+class LocalEmbedder:     # wraps sentence-transformers, same interface
+```
+Both expose `.embed(text) -> List[float]` and `.model_id`. The retriever and memory layers call the interface — swapping the embedder requires no other code change.
+
+---
+
+#### `nexus/eval/` — Evaluation
+```python
+recall_at_k(retrieved_ids, relevant_ids, k)   # fraction of relevant docs in top-k
+mrr(retrieved_ids, relevant_ids)              # mean reciprocal rank
+ndcg(retrieved_ids, relevant_ids, k)          # normalised discounted cumulative gain
+```
+`GoldenSet` stores (query, expected_chunk_ids) pairs and runs all three metrics against the retriever in one call.
+
+---
+
+#### `app.py` — FastAPI server
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/query` | Run a query through an agent; returns strategy, chunks, answer, memory stats |
+| `GET /api/graph` | Return all entities and relationships for the KG canvas |
+| `GET /api/audit` | Return the full audit log |
+| `GET /api/info` | Return chunk count, entity count, embedder model |
+| `GET /` | Serve the web UI |
+
+The server initialises all NEXUS components once at startup (same as `demo.py`) and keeps them in module-level state — intentional for a single-process demo server.
+
+---
+
 ## Tech Stack
 
 - **Python 3.8+** — `from __future__ import annotations` + typing module throughout
