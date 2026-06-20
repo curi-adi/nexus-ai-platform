@@ -2,6 +2,8 @@
 
 A self-guided demo. Run each query, observe the result, and compare where indicated.
 
+**Video walkthrough:** https://youtu.be/c_Y9eCdzPM8
+
 ---
 
 ## The Two Agents — What, Why, and How

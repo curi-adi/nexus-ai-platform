@@ -8,7 +8,7 @@ Built for regulated environments where governance, provenance, and explainabilit
 
 ## Demo
 
-https://github.com/curi-adi/nexus-ai-platform/raw/main/nexus-walkthrough.mp4
+[![NEXUS Demo](https://img.youtube.com/vi/c_Y9eCdzPM8/0.jpg)](https://youtu.be/c_Y9eCdzPM8)
 
 See [WALKTHROUGH.md](WALKTHROUGH.md) for a step-by-step guided tour.
 
