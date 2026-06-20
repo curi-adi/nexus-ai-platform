@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS — Context & Knowledge Platform</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: #0d1117; }
+  ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes glow {
+    0%,100% { box-shadow: 0 0 0 0 rgba(139,92,246,0); }
+    50%      { box-shadow: 0 0 16px 4px rgba(139,92,246,0.45); }
+  }
+  @keyframes stepPop {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.08); }
+    100% { transform: scale(1); }
+  }
+  .fade-up    { animation: fadeUp 0.35s ease forwards; }
+  .step-glow  { animation: glow 1s ease-in-out; }
+  .step-pop   { animation: stepPop 0.3s ease; }
+
+  .pipe-step {
+    transition: opacity 0.25s, border-color 0.25s, color 0.25s, background 0.25s;
+  }
+  .pipe-arrow {
+    transition: stroke 0.25s;
+  }
+  .chunk-card {
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+</style>
+</head>
+<body class="bg-[#0d1117] text-[#c9d1d9] h-screen overflow-hidden flex flex-col">
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<header class="shrink-0 border-b border-[#21262d] px-5 py-2.5 flex items-center justify-between">
+  <div class="flex items-center gap-3">
+    <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xs">N</div>
+    <span class="text-white font-semibold">NEXUS</span>
+    <span class="text-[#8b949e] text-sm">Context &amp; Knowledge Platform</span>
+  </div>
+  <div class="flex items-center gap-5 text-xs text-[#8b949e]">
+    <span class="flex items-center gap-1.5">
+      <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+      <span id="hdr-chunks">6 chunks</span>
+    </span>
+    <span id="hdr-entities">7 entities</span>
+    <span id="hdr-embedder" class="text-violet-400 font-mono">hashing-256</span>
+  </div>
+</header>
+
+<!-- ═══════════════ QUERY BAR ═══════════════ -->
+<div class="shrink-0 border-b border-[#21262d] bg-[#161b22] px-5 py-3 flex items-center gap-3">
+
+  <!-- Agent toggle -->
+  <div class="flex bg-[#0d1117] rounded-lg p-0.5 gap-0.5 shrink-0 border border-[#21262d]">
+    <button id="btn-A" onclick="selectAgent('A')"
+      class="px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-violet-600 text-white">
+      Agent A <span class="opacity-60 ml-0.5">RESTRICTED</span>
+    </button>
+    <button id="btn-B" onclick="selectAgent('B')"
+      class="px-3 py-1.5 rounded-md text-xs font-medium transition-all text-[#8b949e] hover:text-white">
+      Agent B <span class="opacity-60 ml-0.5">NJ·INTERNAL</span>
+    </button>
+  </div>
+
+  <!-- Preset pills -->
+  <div class="flex gap-1.5 shrink-0">
+    <button onclick="setQuery('Who is Patrick Mahomes?')"
+      class="text-[11px] px-2.5 py-1 rounded-full border border-[#30363d] text-[#8b949e] hover:border-blue-500 hover:text-blue-300 transition-all whitespace-nowrap">
+      Mahomes? <span class="text-blue-400">GRAPH</span>
+    </button>
+    <button onclick="setQuery('What is expected value?')"
+      class="text-[11px] px-2.5 py-1 rounded-full border border-[#30363d] text-[#8b949e] hover:border-green-500 hover:text-green-300 transition-all whitespace-nowrap">
+      Expected value? <span class="text-green-400">DIRECT</span>
+    </button>
+    <button onclick="setQuery('NJ boosted odds rules?')"
+      class="text-[11px] px-2.5 py-1 rounded-full border border-[#30363d] text-[#8b949e] hover:border-violet-500 hover:text-violet-300 transition-all whitespace-nowrap">
+      NJ odds rules? <span class="text-violet-400">HYBRID</span>
+    </button>
+    <button onclick="setQuery('Show the incident postmortem')"
+      class="text-[11px] px-2.5 py-1 rounded-full border border-[#30363d] text-[#8b949e] hover:border-red-500 hover:text-red-300 transition-all whitespace-nowrap">
+      Postmortem <span class="text-red-400">ABAC</span>
+    </button>
+  </div>
+
+  <!-- Input -->
+  <input id="query-input" type="text" placeholder="Ask NEXUS anything..."
+    class="flex-1 bg-[#0d1117] border border-[#30363d] rounded-lg px-4 py-2 text-sm text-white placeholder-[#8b949e] focus:outline-none focus:border-violet-500 transition-colors min-w-0">
+
+  <button id="send-btn" onclick="submitQuery()"
+    class="shrink-0 flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-all disabled:opacity-50">
+    <svg id="send-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+    </svg>
+    Send
+  </button>
+</div>
+
+<!-- ═══════════════ MAIN GRID ═══════════════ -->
+<div class="flex-1 min-h-0 flex gap-0">
+
+  <!-- LEFT: pipeline + chunks -->
+  <div class="flex-1 min-w-0 flex flex-col border-r border-[#21262d]">
+
+    <!-- Pipeline -->
+    <div class="shrink-0 border-b border-[#21262d] bg-[#0d1117] px-5 py-3">
+      <div class="text-[10px] font-semibold text-[#8b949e] uppercase tracking-widest mb-2">Query Pipeline</div>
+      <div class="flex items-center gap-1 flex-wrap">
+
+        <!-- step: Query -->
+        <div id="ps-query" class="pipe-step opacity-30 px-3 py-1.5 rounded-lg border border-[#30363d] text-[11px] font-medium text-[#8b949e] bg-[#161b22]">
+          Query
+        </div>
+        <svg class="w-5 h-3 shrink-0"><path d="M0 6 L12 6 M8 2 L12 6 L8 10" fill="none" stroke="#30363d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+
+        <!-- step: Anti-RAG -->
+        <div id="ps-antiraг" class="pipe-step opacity-30 px-3 py-1.5 rounded-lg border border-[#30363d] text-[11px] font-medium text-[#8b949e] bg-[#161b22] whitespace-nowrap">
+          Anti-RAG Router
+        </div>
+        <svg class="w-5 h-3 shrink-0"><path d="M0 6 L12 6 M8 2 L12 6 L8 10" fill="none" stroke="#30363d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+
+        <!-- step: Strategy -->
+        <div id="ps-strategy" class="pipe-step opacity-30 px-3 py-1.5 rounded-lg border border-[#30363d] text-[11px] font-bold text-[#8b949e] bg-[#161b22] whitespace-nowrap">
+          Strategy
+        </div>
+
+        <!-- retrieval group (hidden when DIRECT) -->
+        <div id="ps-retrieval-group" class="flex items-center gap-1 opacity-30">
+          <svg class="w-5 h-3 shrink-0"><path d="M0 6 L12 6 M8 2 L12 6 L8 10" fill="none" stroke="#30363d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div id="ps-retrieve" class="pipe-step px-3 py-1.5 rounded-lg border border-[#30363d] text-[11px] font-medium text-[#8b949e] bg-[#161b22] whitespace-nowrap">
+            Dense + BM25 + Graph
+          </div>
+          <svg class="w-5 h-3 shrink-0"><path d="M0 6 L12 6 M8 2 L12 6 L8 10" fill="none" stroke="#30363d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div id="ps-rrf" class="pipe-step px-3 py-1.5 rounded-lg border border-[#30363d] text-[11px] font-medium text-[#8b949e] bg-[#161b22] whitespace-nowrap">
+            RRF Fusion
+          </div>
+          <svg class="w-5 h-3 shrink-0"><path d="M0 6 L12 6 M8 2 L12 6 L8 10" fill="none" stroke="#30363d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div id="ps-abac" class="pipe-step px-3 py-1.5 rounded-lg border border-[#30363d] text-[11px] font-medium text-[#8b949e] bg-[#161b22] whitespace-nowrap">
+            ABAC Filter
+          </div>
+        </div>
+
+        <svg class="w-5 h-3 shrink-0"><path d="M0 6 L12 6 M8 2 L12 6 L8 10" fill="none" stroke="#30363d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div id="ps-results" class="pipe-step opacity-30 px-3 py-1.5 rounded-lg border border-[#30363d] text-[11px] font-medium text-[#8b949e] bg-[#161b22] whitespace-nowrap">
+          Results
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Chunks -->
+    <div class="flex-1 min-h-0 overflow-y-auto p-4">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-[10px] font-semibold text-[#8b949e] uppercase tracking-widest">Retrieved Chunks</span>
+        <span id="chunk-count" class="text-[11px] text-[#8b949e]"></span>
+      </div>
+      <div id="chunks-container">
+        <div class="text-[#8b949e] text-sm text-center py-16 opacity-50">Submit a query to see retrieved chunks</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: answer + KG + memory/audit -->
+  <div class="w-[340px] shrink-0 flex flex-col min-h-0">
+
+    <!-- Answer -->
+    <div class="shrink-0 border-b border-[#21262d] p-4">
+      <div class="text-[10px] font-semibold text-[#8b949e] uppercase tracking-widest mb-2">Answer</div>
+      <div id="answer-box" class="text-sm text-[#c9d1d9] leading-relaxed min-h-[72px] max-h-[140px] overflow-y-auto">
+        <span class="text-[#8b949e] opacity-50">Waiting for query...</span>
+      </div>
+    </div>
+
+    <!-- KG canvas -->
+    <div class="flex-1 min-h-0 border-b border-[#21262d] p-3 flex flex-col">
+      <div class="text-[10px] font-semibold text-[#8b949e] uppercase tracking-widest mb-2">Knowledge Graph</div>
+      <canvas id="kg-canvas" class="flex-1 w-full rounded-lg bg-[#0d1117]"></canvas>
+    </div>
+
+    <!-- Memory & Audit -->
+    <div class="shrink-0 p-4">
+      <div class="text-[10px] font-semibold text-[#8b949e] uppercase tracking-widest mb-3">Memory &amp; Audit</div>
+
+      <!-- Working memory bar -->
+      <div class="mb-2">
+        <div class="flex justify-between text-[11px] text-[#8b949e] mb-1">
+          <span>Working Memory</span>
+          <span id="wm-label">0 / 10</span>
+        </div>
+        <div class="h-1.5 bg-[#21262d] rounded-full overflow-hidden">
+          <div id="wm-bar" class="h-full bg-violet-500 rounded-full transition-all duration-700" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div class="flex gap-4 text-[11px] mb-3">
+        <span class="text-[#8b949e]">Episodic: <b id="ep-total" class="text-white font-normal">0</b></span>
+        <span class="text-[#8b949e]">Compressed: <b id="ep-compressed" class="text-green-400 font-normal">0</b></span>
+        <span class="text-[#8b949e]">Excl: <b id="excl-count" class="text-red-400 font-normal">0</b></span>
+      </div>
+
+      <!-- Audit entries -->
+      <div class="text-[11px] text-[#8b949e] mb-1">
+        Audit Log — <span id="audit-total">0</span> entries
+      </div>
+      <div id="audit-list" class="flex flex-col gap-0.5 max-h-[90px] overflow-y-auto text-[11px]"></div>
+    </div>
+  </div>
+
+</div><!-- /main grid -->
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════
+let currentAgent = 'A';
+let kgData = { entities: [], relationships: [] };
+let highlightIds = new Set();
+
+// ══════════════════════════════════════════════════════════════
+// AGENT TOGGLE
+// ══════════════════════════════════════════════════════════════
+function selectAgent(id) {
+  currentAgent = id;
+  const cls_on  = 'px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-violet-600 text-white';
+  const cls_off = 'px-3 py-1.5 rounded-md text-xs font-medium transition-all text-[#8b949e] hover:text-white';
+  document.getElementById('btn-A').className = id === 'A' ? cls_on : cls_off;
+  document.getElementById('btn-B').className = id === 'B' ? cls_on : cls_off;
+}
+
+function setQuery(q) {
+  document.getElementById('query-input').value = q;
+  document.getElementById('query-input').focus();
+}
+
+// ══════════════════════════════════════════════════════════════
+// COLOURS
+// ══════════════════════════════════════════════════════════════
+const STRAT_STYLE = {
+  GRAPH:      { bg: '#0f1e3d', border: '#3b82f6', text: '#93c5fd' },
+  HYBRID:     { bg: '#1a0f3d', border: '#8b5cf6', text: '#c4b5fd' },
+  DENSE:      { bg: '#1a0f3d', border: '#8b5cf6', text: '#c4b5fd' },
+  SPARSE:     { bg: '#1a0f3d', border: '#8b5cf6', text: '#c4b5fd' },
+  DIRECT:     { bg: '#0a2318', border: '#10b981', text: '#6ee7b7' },
+  STRUCTURED: { bg: '#271200', border: '#f97316', text: '#fdba74' },
+  CACHED:     { bg: '#271e00', border: '#f59e0b', text: '#fcd34d' },
+};
+
+const SENS_CLS = {
+  PUBLIC:       'border-green-700 text-green-300 bg-green-950',
+  INTERNAL:     'border-blue-700  text-blue-300  bg-blue-950',
+  CONFIDENTIAL: 'border-yellow-700 text-yellow-300 bg-yellow-950',
+  RESTRICTED:   'border-red-700   text-red-300   bg-red-950',
+};
+const DOM_CLS = {
+  SPORTS:      'text-blue-300   bg-blue-950',
+  COMPLIANCE:  'text-yellow-300 bg-yellow-950',
+  OPERATIONS:  'text-red-300    bg-red-950',
+  PRODUCT:     'text-violet-300 bg-violet-950',
+  CUSTOMER:    'text-teal-300   bg-teal-950',
+  ENGINEERING: 'text-cyan-300   bg-cyan-950',
+  FINANCE:     'text-emerald-300 bg-emerald-950',
+  MARKETING:   'text-pink-300   bg-pink-950',
+};
+const ENTITY_COLOR = {
+  PLAYER: '#60a5fa', TEAM: '#34d399', LEAGUE: '#fbbf24',
+  REGULATION: '#fb923c', PRODUCT: '#a78bfa', JURISDICTION: '#f472b6',
+  EVENT: '#f87171', CHUNK: '#9ca3af',
+};
+
+// ══════════════════════════════════════════════════════════════
+// PIPELINE ANIMATION
+// ══════════════════════════════════════════════════════════════
+function resetPipeline() {
+  ['ps-query','ps-antiraг','ps-strategy','ps-retrieve','ps-rrf','ps-abac','ps-results'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.opacity   = '0.25';
+    el.style.background = '#161b22';
+    el.style.borderColor = '#30363d';
+    el.style.color = '#8b949e';
+  });
+  const ps = document.getElementById('ps-strategy');
+  if (ps) ps.textContent = 'Strategy';
+  const ab = document.getElementById('ps-abac');
+  if (ab) ab.textContent = 'ABAC Filter';
+  const re = document.getElementById('ps-results');
+  if (re) re.textContent = 'Results';
+  const rg = document.getElementById('ps-retrieval-group');
+  if (rg) rg.style.opacity = '0.25';
+}
+
+function lightStep(id, delay, overrides = {}) {
+  return new Promise(resolve => setTimeout(() => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.style.opacity = '1';
+      el.classList.add('step-pop');
+      if (overrides.bg)     el.style.background  = overrides.bg;
+      if (overrides.border) el.style.borderColor  = overrides.border;
+      if (overrides.color)  el.style.color        = overrides.color;
+      if (overrides.text)   el.textContent        = overrides.text;
+      setTimeout(() => el.classList.remove('step-pop'), 350);
+    }
+    resolve();
+  }, delay));
+}
+
+async function animatePipeline(strategy, chunkCount, excludedCount) {
+  resetPipeline();
+  const sc = STRAT_STYLE[strategy] || STRAT_STYLE.HYBRID;
+  const isDirect = ['DIRECT','STRUCTURED','CACHED'].includes(strategy);
+
+  await lightStep('ps-query', 0);
+  await lightStep('ps-antiraг', 280);
+  await lightStep('ps-strategy', 560, { ...sc, text: strategy });
+
+  if (isDirect) {
+    document.getElementById('ps-retrieval-group').style.opacity = '0.1';
+    await lightStep('ps-results', 840, {
+      ...sc,
+      text: 'No retrieval needed',
+    });
+  } else {
+    const rg = document.getElementById('ps-retrieval-group');
+    rg.style.opacity = '1';
+    await lightStep('ps-retrieve', 840);
+    await lightStep('ps-rrf',     1120);
+    const abacOverride = excludedCount > 0
+      ? { bg:'#2d0f0f', border:'#ef4444', color:'#fca5a5', text: `ABAC — ${excludedCount} excluded` }
+      : { bg:'#0a2318', border:'#10b981', color:'#6ee7b7', text: 'ABAC — all passed' };
+    await lightStep('ps-abac', 1400, abacOverride);
+    await lightStep('ps-results', 1680, { ...sc, text: `${chunkCount} result${chunkCount!==1?'s':''}` });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// CHUNK RENDERING
+// ══════════════════════════════════════════════════════════════
+function renderChunks(chunks) {
+  const container = document.getElementById('chunks-container');
+  document.getElementById('chunk-count').textContent =
+    chunks.length ? `${chunks.length} returned` : '';
+
+  if (!chunks.length) {
+    container.innerHTML = '<div class="text-[#8b949e] text-sm text-center py-16 opacity-50">No retrieval — DIRECT routing skipped the knowledge store</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+  chunks.forEach((c, i) => {
+    const sCls = SENS_CLS[c.sensitivity] || 'border-gray-700 text-gray-300 bg-gray-900';
+    const dCls = DOM_CLS[c.domain] || 'text-gray-300 bg-gray-900';
+    const srcs = (c.explanation || '').split(',').filter(Boolean).map(s =>
+      `<span class="px-1.5 py-0.5 rounded text-[10px] bg-[#21262d] text-[#8b949e]">${s}</span>`
+    ).join('');
+
+    const div = document.createElement('div');
+    div.className = 'chunk-card mb-3 bg-[#161b22] border border-[#21262d] rounded-xl p-4';
+    div.innerHTML = `
+      <div class="flex items-center gap-2 mb-2 flex-wrap">
+        <span class="px-2 py-0.5 rounded-md text-[11px] font-medium ${dCls}">${c.domain}</span>
+        <span class="px-2 py-0.5 rounded-md text-[11px] border ${sCls}">${c.sensitivity}</span>
+        <span class="ml-auto text-[11px] text-[#8b949e] font-mono">${c.score}</span>
+        ${srcs}
+      </div>
+      <p class="text-[13px] text-[#c9d1d9] leading-relaxed">${escHtml(c.content.slice(0, 260))}${c.content.length > 260 ? '…' : ''}</p>
+    `;
+    container.appendChild(div);
+    setTimeout(() => { div.style.opacity = '1'; }, i * 90 + 50);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// SUBMIT QUERY
+// ══════════════════════════════════════════════════════════════
+async function submitQuery() {
+  const query = document.getElementById('query-input').value.trim();
+  if (!query) return;
+
+  const btn  = document.getElementById('send-btn');
+  const icon = document.getElementById('send-icon');
+  btn.disabled = true;
+  icon.outerHTML = '<svg id="send-icon" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25"/><path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="4" class="opacity-75"/></svg>';
+
+  try {
+    const resp = await fetch('/api/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, agent_id: currentAgent }),
+    });
+    const data = await resp.json();
+
+    // Pipeline
+    animatePipeline(data.strategy, data.chunks.length, data.excluded_count);
+
+    // Chunks (staggered after pipeline)
+    setTimeout(() => renderChunks(data.chunks), 1700);
+
+    // Answer
+    const sc = STRAT_STYLE[data.strategy] || STRAT_STYLE.HYBRID;
+    document.getElementById('answer-box').innerHTML =
+      `<div class="text-[10px] mb-1.5 font-semibold" style="color:${sc.text}">Agent ${currentAgent} · ${data.strategy}</div>` +
+      `<div class="text-[13px] leading-relaxed">${escHtml(data.answer)}</div>`;
+
+    // Memory
+    const m = data.memory;
+    document.getElementById('wm-label').textContent = `${m.working_count} / ${m.working_capacity}`;
+    document.getElementById('wm-bar').style.width = `${(m.working_count / m.working_capacity) * 100}%`;
+    document.getElementById('ep-total').textContent = m.episodic_total;
+    document.getElementById('ep-compressed').textContent = m.episodic_compressed;
+    document.getElementById('excl-count').textContent = data.excluded_count;
+
+    // KG highlight from entity_refs
+    highlightIds = new Set(data.chunks.flatMap(c => c.entity_refs || []));
+    drawKG();
+
+    // Audit
+    loadAudit();
+
+  } catch (err) {
+    document.getElementById('answer-box').textContent = 'Error: ' + err.message;
+  } finally {
+    document.getElementById('send-btn').disabled = false;
+    document.getElementById('send-btn').innerHTML =
+      `<svg id="send-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+       </svg> Send`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// AUDIT LOG
+// ══════════════════════════════════════════════════════════════
+async function loadAudit() {
+  try {
+    const r = await fetch('/api/audit');
+    const d = await r.json();
+    document.getElementById('audit-total').textContent = d.total;
+
+    const stColor = { GRAPH:'#60a5fa', HYBRID:'#a78bfa', DIRECT:'#34d399',
+                      STRUCTURED:'#fb923c', CACHED:'#fbbf24' };
+    const recent = d.entries.slice(-6).reverse();
+    document.getElementById('audit-list').innerHTML = recent.map(e =>
+      `<div class="flex items-center gap-1.5 py-0.5 border-b border-[#21262d]">
+        <span class="text-[#8b949e] w-7">#${e.seq}</span>
+        <span class="text-[#8b949e]">P:${e.principal_id}</span>
+        <span style="color:${stColor[e.strategy]||'#9ca3af'}">${e.strategy}</span>
+        <span class="ml-auto text-green-400">${(e.returned_ids||[]).length} ret</span>
+        ${(e.excluded_count||0) > 0 ? `<span class="text-red-400">${e.excluded_count} excl</span>` : ''}
+      </div>`
+    ).join('');
+  } catch(_) {}
+}
+
+// ══════════════════════════════════════════════════════════════
+// KNOWLEDGE GRAPH (Canvas)
+// ══════════════════════════════════════════════════════════════
+function drawKG() {
+  const canvas = document.getElementById('kg-canvas');
+  if (!canvas || !kgData.entities.length) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth;
+  const H = canvas.offsetHeight;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const cx = W / 2, cy = H / 2;
+  const radius = Math.min(W, H) / 2 - 44;
+  const n = kgData.entities.length;
+
+  // compute positions (circle layout)
+  const pos = {};
+  kgData.entities.forEach((e, i) => {
+    const a = (i / n) * 2 * Math.PI - Math.PI / 2;
+    pos[e.id] = { x: cx + radius * Math.cos(a), y: cy + radius * Math.sin(a) };
+  });
+
+  // draw edges
+  ctx.lineWidth = 1;
+  kgData.relationships.forEach(rel => {
+    const s = pos[rel.source], t = pos[rel.target];
+    if (!s || !t) return;
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y);
+    ctx.lineTo(t.x, t.y);
+    ctx.strokeStyle = '#21262d';
+    ctx.stroke();
+    // label at midpoint
+    const mx = (s.x + t.x) / 2, my = (s.y + t.y) / 2;
+    ctx.fillStyle = '#484f58';
+    ctx.font = '8px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(rel.type.replace(/_/g,' '), mx, my);
+  });
+
+  // draw nodes
+  kgData.entities.forEach(e => {
+    const p = pos[e.id];
+    const color  = ENTITY_COLOR[e.type] || '#9ca3af';
+    const isHit  = highlightIds.has(e.id);
+    const r      = isHit ? 14 : 10;
+
+    if (isHit) {
+      // glow
+      const grad = ctx.createRadialGradient(p.x, p.y, r, p.x, p.y, r + 14);
+      grad.addColorStop(0, color + '55');
+      grad.addColorStop(1, color + '00');
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r + 14, 0, 2 * Math.PI);
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+
+    // circle
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r, 0, 2 * Math.PI);
+    ctx.fillStyle   = isHit ? color : '#161b22';
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = isHit ? 2.5 : 1.5;
+    ctx.fill();
+    ctx.stroke();
+
+    // name label
+    const label = e.name.length > 16 ? e.name.slice(0, 14) + '…' : e.name;
+    ctx.fillStyle     = isHit ? '#ffffff' : '#8b949e';
+    ctx.font          = `${isHit ? 'bold ' : ''}10px system-ui`;
+    ctx.textAlign     = 'center';
+    ctx.textBaseline  = 'top';
+    ctx.fillText(label, p.x, p.y + r + 4);
+
+    // type label
+    ctx.fillStyle = color + 'bb';
+    ctx.font      = '8px system-ui';
+    ctx.fillText(e.type, p.x, p.y + r + 16);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════════════════
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// ══════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════
+async function init() {
+  // Enter to submit
+  document.getElementById('query-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitQuery();
+  });
+
+  // Load KG
+  try {
+    const r = await fetch('/api/graph');
+    kgData = await r.json();
+  } catch(_) {}
+  drawKG();
+
+  // Redraw KG on resize
+  const ro = new ResizeObserver(() => drawKG());
+  ro.observe(document.getElementById('kg-canvas'));
+
+  // Load audit
+  loadAudit();
+
+  // Load system info
+  try {
+    const r = await fetch('/api/info');
+    const d = await r.json();
+    document.getElementById('hdr-chunks').textContent   = `${d.chunks} chunks`;
+    document.getElementById('hdr-entities').textContent = `${d.entities} entities`;
+    document.getElementById('hdr-embedder').textContent = d.embedder;
+  } catch(_) {}
+}
+
+window.addEventListener('load', init);
+</script>
+</body>
+</html>

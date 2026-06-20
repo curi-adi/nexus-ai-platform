@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS — Demo Guide</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0d1117;
+    --surface:  #161b22;
+    --border:   #21262d;
+    --border2:  #30363d;
+    --text:     #c9d1d9;
+    --muted:    #8b949e;
+    --white:    #f0f6fc;
+    --violet:   #8b5cf6;
+    --violet-l: #c4b5fd;
+    --blue:     #3b82f6;
+    --blue-l:   #93c5fd;
+    --green:    #10b981;
+    --green-l:  #6ee7b7;
+    --orange:   #f97316;
+    --red:      #ef4444;
+    --yellow:   #f59e0b;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.65;
+  }
+
+  /* ── Layout ── */
+  .page { max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  /* ── Header ── */
+  .hero {
+    display: flex; align-items: center; gap: 14px;
+    padding-bottom: 28px; border-bottom: 1px solid var(--border);
+    margin-bottom: 36px;
+  }
+  .logo {
+    width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+    background: linear-gradient(135deg, #7c3aed, #4f46e5);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 800; color: #fff;
+  }
+  .hero-text h1 { font-size: 22px; font-weight: 700; color: var(--white); }
+  .hero-text p  { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  /* ── Section headings ── */
+  h2 {
+    font-size: 11px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted);
+    margin: 40px 0 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  h2::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  h3 { font-size: 15px; font-weight: 600; color: var(--white); margin-bottom: 8px; }
+
+  /* ── Pitch box ── */
+  .pitch {
+    background: var(--surface); border: 1px solid var(--violet);
+    border-radius: 12px; padding: 20px 24px;
+    font-size: 14px; color: var(--text); line-height: 1.75;
+    position: relative;
+  }
+  .pitch::before {
+    content: '"'; position: absolute; top: 6px; left: 14px;
+    font-size: 48px; color: var(--violet); opacity: .35; line-height: 1;
+    font-family: Georgia, serif;
+  }
+
+  /* ── Code block ── */
+  pre {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px 20px;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 13px; color: var(--green-l); overflow-x: auto;
+    margin: 10px 0;
+  }
+  code { font-family: inherit; }
+
+  /* ── Info cards ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px;
+    margin-bottom: 12px;
+  }
+  .card p { color: var(--text); margin-top: 6px; }
+
+  /* ── Tables ── */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  th {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--muted);
+    padding: 8px 12px; border-bottom: 1px solid var(--border);
+    text-align: left;
+  }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: rgba(255,255,255,.025); }
+
+  /* ── Strategy badges ── */
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 2px 9px; border-radius: 20px;
+    font-size: 11px; font-weight: 600; border: 1px solid;
+  }
+  .badge-graph  { background: #0f1e3d; border-color: var(--blue);   color: var(--blue-l); }
+  .badge-hybrid { background: #1a0f3d; border-color: var(--violet); color: var(--violet-l); }
+  .badge-direct { background: #0a2318; border-color: var(--green);  color: var(--green-l); }
+  .badge-struct { background: #271200; border-color: var(--orange); color: #fdba74; }
+  .badge-cached { background: #271e00; border-color: var(--yellow); color: #fcd34d; }
+  .badge-red    { background: #2d0f0f; border-color: var(--red);    color: #fca5a5; }
+  .badge-green  { background: #0a2318; border-color: var(--green);  color: var(--green-l); }
+
+  /* ── Demo scenario cards ── */
+  .demo {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 22px 24px; margin-bottom: 16px;
+  }
+  .demo-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+    padding-bottom: 12px; border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .demo-number {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--violet); color: #fff;
+    font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .demo-title { font-size: 15px; font-weight: 600; color: var(--white); }
+  .demo-pill {
+    margin-left: auto; padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; background: var(--bg); border: 1px solid var(--border2);
+    color: var(--muted);
+  }
+
+  .say-box {
+    background: #0d2318; border: 1px solid #1a4a30;
+    border-radius: 8px; padding: 14px 16px; margin: 10px 0;
+    font-style: italic; color: #b7e4c7; font-size: 13px;
+    position: relative;
+  }
+  .say-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--green); font-style: normal;
+    display: block; margin-bottom: 6px;
+  }
+
+  .see-box {
+    background: #0f0e1e; border: 1px solid #2d2b4e;
+    border-radius: 8px; padding: 14px 16px; margin: 10px 0;
+    font-size: 13px; color: #c4b5fd;
+  }
+  .see-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--violet);
+    display: block; margin-bottom: 6px;
+  }
+
+  /* ── Pipeline visual ── */
+  .pipeline {
+    display: flex; align-items: center; gap: 4px;
+    flex-wrap: wrap; padding: 16px 18px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 10px; margin: 12px 0;
+  }
+  .ps {
+    padding: 5px 12px; border-radius: 8px; border: 1px solid var(--border2);
+    font-size: 11px; font-weight: 500; color: var(--muted);
+    background: var(--surface); white-space: nowrap;
+  }
+  .ps.active  { border-color: var(--violet); color: var(--violet-l); background: #1a0f3d; }
+  .ps.blue    { border-color: var(--blue);   color: var(--blue-l);   background: #0f1e3d; }
+  .ps.green   { border-color: var(--green);  color: var(--green-l);  background: #0a2318; }
+  .ps.red     { border-color: var(--red);    color: #fca5a5;         background: #2d0f0f; }
+  .ps.dim     { opacity: .2; }
+  .arrow      { color: var(--border2); font-size: 14px; }
+
+  /* ── Concept grid ── */
+  .concept-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+  @media (max-width: 600px) { .concept-grid { grid-template-columns: 1fr; } }
+  .concept-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px;
+  }
+  .concept-card .label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--muted); margin-bottom: 6px;
+  }
+  .concept-card p { font-size: 13px; color: var(--text); line-height: 1.6; }
+
+  /* ── Agent comparison ── */
+  .agent-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+  @media (max-width: 600px) { .agent-row { grid-template-columns: 1fr; } }
+  .agent-card {
+    background: var(--surface); border-radius: 10px; padding: 16px;
+  }
+  .agent-card.a { border: 1px solid #4f46e5; }
+  .agent-card.b { border: 1px solid #0ea5e9; }
+  .agent-name { font-size: 13px; font-weight: 700; color: var(--white); margin-bottom: 10px; }
+  .agent-row-item { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+  .agent-row-item .k { color: var(--muted); }
+  .agent-row-item .v { color: var(--text); text-align: right; }
+
+  /* ── File tree ── */
+  .tree {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px 22px; font-family: monospace;
+    font-size: 12.5px; color: var(--text); line-height: 1.8;
+  }
+  .tree .dir  { color: #60a5fa; }
+  .tree .file { color: var(--muted); }
+  .tree .note { color: #484f58; }
+
+  /* ── Fix box ── */
+  .fix-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px 20px; margin-bottom: 10px;
+  }
+  .fix-card h4 { color: var(--yellow); font-size: 13px; margin-bottom: 6px; }
+  .fix-card p  { color: var(--text); font-size: 13px; }
+
+  /* ── Divider ── */
+  hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  /* ── Anchor nav ── */
+  .toc {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 22px; margin-bottom: 36px;
+  }
+  .toc-title { font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--muted); margin-bottom: 12px; }
+  .toc a {
+    display: block; color: var(--muted); text-decoration: none;
+    font-size: 13px; padding: 3px 0;
+  }
+  .toc a:hover { color: var(--violet-l); }
+  .toc a::before { content: '→ '; color: var(--border2); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="logo">N</div>
+    <div class="hero-text">
+      <h1>NEXUS — Demo Guide</h1>
+      <p>What to say, what to click, what it proves. Use this while recording your video.</p>
+    </div>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <div class="toc-title">Contents</div>
+    <a href="#pitch">Your 30-second pitch</a>
+    <a href="#start">Starting the server</a>
+    <a href="#ui">The UI layout</a>
+    <a href="#concepts">Key concepts</a>
+    <a href="#demos">4 demo scenarios</a>
+    <a href="#technical">Technical talking points</a>
+    <a href="#files">File structure</a>
+    <a href="#fixes">If something breaks</a>
+  </div>
+
+  <!-- ═══ PITCH ═══ -->
+  <h2 id="pitch">Your 30-second pitch</h2>
+  <div class="pitch">
+    "NEXUS is a governed memory and knowledge layer that sits between your AI agents and your data.
+    Instead of every team building their own RAG pipeline, NEXUS gives you one central place —
+    with intelligent routing, a knowledge graph, tiered memory, and access control baked in.
+    I built the full platform from scratch in Python: from the vector store to the query pipeline
+    to the governance layer."
+  </div>
+
+  <!-- ═══ START ═══ -->
+  <h2 id="start">Starting the server</h2>
+  <div class="card">
+    <h3>Two commands, then open the browser</h3>
+    <pre>cd d:\deeplearning\Nexus\nexus_platform
+python -m uvicorn app:app --port 8000</pre>
+    <p>Open <strong style="color:#c4b5fd">http://localhost:8000</strong> in your browser.</p>
+    <p style="margin-top:10px; color:var(--muted)">
+      The header will confirm the system is live:
+      <span style="color:#6ee7b7">● 6 chunks</span> &nbsp;
+      <span style="color:var(--text)">7 entities</span> &nbsp;
+      <span style="color:#c4b5fd; font-family:monospace">hashing-256</span>
+    </p>
+  </div>
+
+  <!-- ═══ UI LAYOUT ═══ -->
+  <h2 id="ui">The UI layout</h2>
+  <div class="card">
+    <h3>Three zones</h3>
+    <pre style="color:var(--muted)">┌────────────────────────────────────────────────────────────┐
+│  HEADER  — live stats: chunks / entities / embedder model  │
+├────────────────────────────────────────────────────────────┤
+│  QUERY BAR  — Agent A/B toggle │ Preset pills │ Text input │
+├────────────────────────────────────┬───────────────────────┤
+│                                    │                       │
+│   QUERY PIPELINE  (animated)       │   ANSWER              │
+│                                    │                       │
+│   RETRIEVED CHUNKS  (cards)        │   KNOWLEDGE GRAPH     │
+│                                    │                       │
+│                                    │   MEMORY & AUDIT      │
+└────────────────────────────────────┴───────────────────────┘</pre>
+  </div>
+
+  <!-- ═══ CONCEPTS ═══ -->
+  <h2 id="concepts">Key concepts</h2>
+
+  <h3>Two agents with different permissions</h3>
+  <div class="agent-row">
+    <div class="agent-card a">
+      <div class="agent-name">Agent A — Full Access</div>
+      <div class="agent-row-item"><span class="k">Max sensitivity</span><span class="v" style="color:#fca5a5">RESTRICTED</span></div>
+      <div class="agent-row-item"><span class="k">Jurisdiction</span><span class="v">Global</span></div>
+      <div class="agent-row-item"><span class="k">Domains</span><span class="v">All</span></div>
+    </div>
+    <div class="agent-card b">
+      <div class="agent-name">Agent B — NJ Analyst</div>
+      <div class="agent-row-item"><span class="k">Max sensitivity</span><span class="v" style="color:#93c5fd">INTERNAL</span></div>
+      <div class="agent-row-item"><span class="k">Jurisdiction</span><span class="v">NJ only</span></div>
+      <div class="agent-row-item"><span class="k">Domains</span><span class="v">Sports, Product, Compliance</span></div>
+    </div>
+  </div>
+  <p style="color:var(--muted); font-size:13px; margin-top:4px">
+    Same query, different agents → different chunks returned. Agent B is blocked from RESTRICTED content and non-NJ data.
+  </p>
+
+  <h3 style="margin-top:24px">The Anti-RAG Router — routing strategies</h3>
+  <table>
+    <thead>
+      <tr><th>Strategy</th><th>What it means</th><th>What happens</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="badge badge-graph">GRAPH</span></td>
+        <td>Query mentions a known entity (person, team…)</td>
+        <td>Knowledge graph traversal first, then retrieve chunks linked to those entities</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-hybrid">HYBRID</span></td>
+        <td>Mixed / broad question</td>
+        <td>All three retrievers fire: dense + BM25 + graph → merged with RRF</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-direct">DIRECT</span></td>
+        <td>Factual / math question</td>
+        <td>Knowledge store <strong>skipped entirely</strong> — answer returned directly</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-struct">STRUCTURED</span></td>
+        <td>Structured data query</td>
+        <td>Skip unstructured retrieval, route to structured lookup</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-cached">CACHED</span></td>
+        <td>Query seen recently</td>
+        <td>Return cached result, zero latency</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3 style="margin-top:24px">The Query Pipeline — animated left to right</h3>
+  <div class="pipeline">
+    <div class="ps active">Query</div><span class="arrow">›</span>
+    <div class="ps active">Anti-RAG Router</div><span class="arrow">›</span>
+    <div class="ps blue">Strategy</div><span class="arrow">›</span>
+    <div class="ps active">Dense + BM25 + Graph</div><span class="arrow">›</span>
+    <div class="ps active">RRF Fusion</div><span class="arrow">›</span>
+    <div class="ps green">ABAC Filter</div><span class="arrow">›</span>
+    <div class="ps blue">Results</div>
+  </div>
+  <p style="color:var(--muted); font-size:13px">Each step lights up with color and a "pop" animation as the query moves through the system.</p>
+
+  <h3 style="margin-top:24px">Chunk cards — what the badges mean</h3>
+  <div class="concept-grid">
+    <div class="concept-card">
+      <div class="label">Domain badge</div>
+      <p>Which data domain the chunk belongs to — SPORTS (blue), COMPLIANCE (yellow), OPERATIONS (red), PRODUCT (violet). Tells you what kind of knowledge was retrieved.</p>
+    </div>
+    <div class="concept-card">
+      <div class="label">Sensitivity badge</div>
+      <p>PUBLIC (green) → INTERNAL (blue) → CONFIDENTIAL (yellow) → RESTRICTED (red). This is the classification that ABAC checks against the agent's clearance level.</p>
+    </div>
+    <div class="concept-card">
+      <div class="label">RRF score</div>
+      <p>Reciprocal Rank Fusion score — how relevant the chunk is. Computed by merging the rank positions from dense, sparse, and graph retrievers, not their raw similarity scores.</p>
+    </div>
+    <div class="concept-card">
+      <div class="label">Source tags</div>
+      <p><code>dense</code> / <code>sparse</code> / <code>graph</code> — which of the three retrievers found this chunk. A chunk with all three tags was ranked high by every method.</p>
+    </div>
+  </div>
+
+  <h3 style="margin-top:24px">Knowledge Graph (right panel canvas)</h3>
+  <p style="font-size:13px; color:var(--text); margin-bottom:10px">
+    Seven entities arranged in a circle. After a query, the entities referenced in retrieved chunks
+    <strong style="color:#c4b5fd">glow and expand</strong> — showing which nodes in the graph were activated.
+  </p>
+  <table>
+    <thead><tr><th>Color</th><th>Entity type</th></tr></thead>
+    <tbody>
+      <tr><td><span style="color:#60a5fa">■</span> Blue</td><td>PLAYER</td></tr>
+      <tr><td><span style="color:#34d399">■</span> Green</td><td>TEAM</td></tr>
+      <tr><td><span style="color:#fbbf24">■</span> Yellow</td><td>LEAGUE</td></tr>
+      <tr><td><span style="color:#fb923c">■</span> Orange</td><td>REGULATION</td></tr>
+      <tr><td><span style="color:#a78bfa">■</span> Violet</td><td>PRODUCT</td></tr>
+      <tr><td><span style="color:#f472b6">■</span> Pink</td><td>JURISDICTION</td></tr>
+      <tr><td><span style="color:#f87171">■</span> Red</td><td>EVENT</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ═══ DEMOS ═══ -->
+  <h2 id="demos">4 demo scenarios</h2>
+
+  <!-- Demo 1 -->
+  <div class="demo">
+    <div class="demo-header">
+      <div class="demo-number">1</div>
+      <div class="demo-title">Knowledge Graph Routing</div>
+      <span class="badge badge-graph">GRAPH</span>
+      <span class="demo-pill">Preset: "Mahomes? GRAPH" · Agent A</span>
+    </div>
+    <div class="say-box">
+      <span class="say-label">Say this</span>
+      "I'm asking about Patrick Mahomes — a named entity in the system. Watch the pipeline.
+      The Anti-RAG Router recognizes 'Mahomes' as a known entity and routes to GRAPH strategy.
+      The knowledge graph traversal fires, finds Mahomes, then expands to connected entities —
+      his team, his league. Six chunks come back. Notice the Knowledge Graph on the right —
+      the blue and green nodes are glowing because they were referenced in the results."
+    </div>
+    <div class="see-box">
+      <span class="see-label">You'll see</span>
+      Pipeline animates all the way through. Strategy badge lights up <span class="badge badge-graph">GRAPH</span>.
+      6 chunk cards appear with SPORTS domain. On the KG canvas, the Mahomes and Chiefs nodes glow with a halo.
+    </div>
+    <div class="pipeline" style="margin-top:12px">
+      <div class="ps active">Query</div><span class="arrow">›</span>
+      <div class="ps active">Anti-RAG Router</div><span class="arrow">›</span>
+      <div class="ps blue">GRAPH</div><span class="arrow">›</span>
+      <div class="ps active">Dense + BM25 + Graph</div><span class="arrow">›</span>
+      <div class="ps active">RRF Fusion</div><span class="arrow">›</span>
+      <div class="ps green">ABAC — all passed</div><span class="arrow">›</span>
+      <div class="ps blue">6 results</div>
+    </div>
+  </div>
+
+  <!-- Demo 2 -->
+  <div class="demo">
+    <div class="demo-header">
+      <div class="demo-number">2</div>
+      <div class="demo-title">Anti-RAG Bypass — the wow moment</div>
+      <span class="badge badge-direct">DIRECT</span>
+      <span class="demo-pill">Preset: "Expected value? DIRECT" · Agent A</span>
+    </div>
+    <div class="say-box">
+      <span class="say-label">Say this</span>
+      "Now watch what happens with a factual math question. The Anti-RAG Router classifies this
+      as DIRECT — it already knows the answer without searching any documents. The retrieval steps
+      dim out entirely. We skip Dense, BM25, Graph, and RRF. Zero chunks are retrieved, the answer
+      is returned immediately. This is the core value of the Anti-RAG Router — no hallucination
+      risk from irrelevant retrieved context, and much lower latency."
+    </div>
+    <div class="see-box">
+      <span class="see-label">You'll see</span>
+      Strategy lights up <span class="badge badge-direct">DIRECT</span>.
+      Dense + BM25 + Graph, RRF Fusion, and ABAC Filter steps <strong>gray out</strong>.
+      Chunk area shows "No retrieval — DIRECT routing skipped the knowledge store".
+    </div>
+    <div class="pipeline" style="margin-top:12px">
+      <div class="ps active">Query</div><span class="arrow">›</span>
+      <div class="ps active">Anti-RAG Router</div><span class="arrow">›</span>
+      <div class="ps green">DIRECT</div><span class="arrow">›</span>
+      <div class="ps dim">Dense + BM25 + Graph</div><span class="arrow">›</span>
+      <div class="ps dim">RRF Fusion</div><span class="arrow">›</span>
+      <div class="ps dim">ABAC Filter</div><span class="arrow">›</span>
+      <div class="ps green">No retrieval needed</div>
+    </div>
+  </div>
+
+  <!-- Demo 3 -->
+  <div class="demo">
+    <div class="demo-header">
+      <div class="demo-number">3</div>
+      <div class="demo-title">ABAC Governance — jurisdiction enforcement</div>
+      <span class="badge badge-hybrid">HYBRID</span>
+      <span class="demo-pill">Preset: "NJ odds rules? HYBRID" · A then B</span>
+    </div>
+    <div class="say-box">
+      <span class="say-label">With Agent A — say this</span>
+      "Agent A has global jurisdiction and RESTRICTED access. It gets back compliance chunks
+      from all jurisdictions — PA, NJ, general rules. All pass ABAC."
+    </div>
+    <div class="say-box" style="background:#1a0f2e; border-color:#4c1d95; color:#ddd6fe">
+      <span class="say-label" style="color:#a78bfa">Switch to Agent B — say this</span>
+      "Agent B is configured as an NJ Analyst — Internal clearance only, New Jersey jurisdiction only.
+      Watch the ABAC Filter step. It now shows 1 excluded in red. The Pennsylvania compliance
+      chunk is blocked. The Audit Log records exactly what was excluded. This is ABAC —
+      Attribute-Based Access Control — enforced at the retrieval layer, not the application layer."
+    </div>
+    <div class="see-box">
+      <span class="see-label">You'll see with Agent B</span>
+      ABAC step turns <span class="badge badge-red">ABAC — 1 excluded</span>.
+      Excluded count in Memory &amp; Audit shows <span style="color:#f87171">1</span> in red.
+      Audit log entry shows <code style="color:#fca5a5">excl: 1</code>.
+    </div>
+  </div>
+
+  <!-- Demo 4 -->
+  <div class="demo">
+    <div class="demo-header">
+      <div class="demo-number">4</div>
+      <div class="demo-title">ABAC on RESTRICTED Content</div>
+      <span class="badge badge-red">RESTRICTED</span>
+      <span class="demo-pill">Preset: "Postmortem ABAC" · A then B</span>
+    </div>
+    <div class="say-box">
+      <span class="say-label">With Agent A — say this</span>
+      "The postmortem is tagged RESTRICTED — the highest sensitivity level.
+      Agent A has RESTRICTED clearance, so it gets the chunk."
+    </div>
+    <div class="say-box" style="background:#1a0f2e; border-color:#4c1d95; color:#ddd6fe">
+      <span class="say-label" style="color:#a78bfa">Switch to Agent B — say this</span>
+      "Agent B only has INTERNAL clearance. The RESTRICTED postmortem chunk is blocked entirely.
+      Same query, same knowledge store — but Agent B sees a completely different, sanitized result set.
+      Every single access decision is logged in the immutable audit trail."
+    </div>
+    <div class="see-box">
+      <span class="see-label">You'll see with Agent B</span>
+      Postmortem chunk is missing from results. Excluded count increments.
+      Audit log entry for Agent B shows exclusion.
+    </div>
+  </div>
+
+  <!-- ═══ TECHNICAL ═══ -->
+  <h2 id="technical">Technical talking points</h2>
+  <p style="color:var(--muted); font-size:13px; margin-bottom:14px">If the interviewer asks "how does this work under the hood":</p>
+
+  <div class="concept-grid">
+    <div class="concept-card">
+      <div class="label">No double-retrieval</div>
+      <p>The retriever stores last_strategy, last_results, and last_excluded as instance variables. The API reads them after agent.think() returns — no second retrieval, no double audit entries.</p>
+    </div>
+    <div class="concept-card">
+      <div class="label">RRF Fusion</div>
+      <p>Dense (cosine similarity), BM25 (term-frequency sparse), and Graph RAG (BFS entity expansion) each produce ranked lists. RRF merges them by rank position — robust to score scale differences between retrievers.</p>
+    </div>
+    <div class="concept-card">
+      <div class="label">KG relationships stored twice</div>
+      <p>KnowledgeGraph.adj stores (target_id, weight) for BFS. A separate _rels list stores full Relationship objects with relation_type — the UI reads those to draw labeled edges on the canvas.</p>
+    </div>
+    <div class="concept-card">
+      <div class="label">Python 3.8 compatible</div>
+      <p>All files use <code>from __future__ import annotations</code> and the typing module throughout — no 3.10+ union syntax or 3.9+ generic collections. Runs on stock Anaconda Python.</p>
+    </div>
+    <div class="concept-card">
+      <div class="label">Zero external dependencies</div>
+      <p>HashingEmbedder (stdlib only) and InMemoryVectorStore mean the entire platform runs without pip installs. sentence-transformers and anthropic are optional upgrades.</p>
+    </div>
+    <div class="concept-card">
+      <div class="label">Tiered memory</div>
+      <p>Working memory (10-slot ring buffer) → EpisodicMemory (compresses old traces via extractive summarization) → SemanticMemory (vector-indexed for recall). All three tiers are coordinated by MemoryManager.</p>
+    </div>
+  </div>
+
+  <!-- ═══ FILES ═══ -->
+  <h2 id="files">File structure</h2>
+  <div class="tree">
+    <span class="dir">nexus_platform/</span><br>
+    &nbsp;&nbsp;<span class="file">app.py</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← FastAPI server (what uvicorn runs)</span><br>
+    &nbsp;&nbsp;<span class="dir">static/</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="file">index.html</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← The entire web UI (single file)</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="file">guide.html</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← This page</span><br>
+    &nbsp;&nbsp;<span class="file">demo.py</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← Terminal demo (no UI needed)</span><br>
+    &nbsp;&nbsp;<span class="dir">nexus/</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">core/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← Models, config, errors</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">embeddings/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← HashingEmbedder + LocalEmbedder</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">storage/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← VectorStore, MetadataStore, AuditLog</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">retrieval/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← Anti-RAG router, BM25, dense, RRF, HybridRetriever</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">graph/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← KnowledgeGraph (BFS traversal)</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">memory/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← Working, Episodic, Semantic, MemoryManager</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">governance/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← ABAC permits(), ProvenanceStore</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">agents/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← ExtractiveAgent, ClaudeAgent</span><br>
+    &nbsp;&nbsp;<span class="dir">tests/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="note">← 46 tests, all passing</span><br>
+  </div>
+
+  <!-- ═══ FIXES ═══ -->
+  <h2 id="fixes">If something breaks during recording</h2>
+
+  <div class="fix-card">
+    <h4>Server not running / connection refused</h4>
+    <pre>cd d:\deeplearning\Nexus\nexus_platform
+python -m uvicorn app:app --port 8000</pre>
+  </div>
+
+  <div class="fix-card">
+    <h4>Port 8000 already in use</h4>
+    <pre>python -m uvicorn app:app --port 8001</pre>
+    <p>Then go to <strong>http://localhost:8001</strong></p>
+  </div>
+
+  <div class="fix-card">
+    <h4>Browser showing old cached version</h4>
+    <p>Hard refresh: <strong>Ctrl + Shift + R</strong></p>
+  </div>
+
+  <div class="fix-card">
+    <h4>Chunks not appearing after restart</h4>
+    <p>The server uses in-memory storage — a restart resets it. Just restart uvicorn and everything re-seeds automatically on startup.</p>
+  </div>
+
+</div><!-- /page -->
+</body>
+</html>

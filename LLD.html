@@ -1,0 +1,907 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NEXUS — Low-Level Design (LLD)</title>
+<style>
+  :root {
+    --bg:#0d1117; --surface:#161b22; --border:#30363d; --primary:#58a6ff;
+    --accent:#f78166; --green:#56d364; --yellow:#e3b341; --purple:#d2a8ff;
+    --orange:#ffa657; --text:#c9d1d9; --muted:#8b949e; --code-bg:#1f2428;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    font-size:15px; line-height:1.7; padding:0 0 80px; }
+  a { color:var(--primary); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+
+
+  .hero { background:linear-gradient(135deg,#0d1117 0%,#161b22 40%,#1a1f2e 100%);
+    border-bottom:1px solid var(--border); padding:56px 48px 44px; max-width:1100px; margin:0 auto; }
+  .hero-tag { display:inline-block; background:rgba(210,168,255,.12); border:1px solid rgba(210,168,255,.3);
+    color:var(--purple); border-radius:20px; padding:3px 14px; font-size:12px; font-weight:600;
+    letter-spacing:.06em; text-transform:uppercase; margin-bottom:18px; }
+  .hero h1 { font-size:38px; font-weight:700; color:#fff; line-height:1.15; margin-bottom:12px; }
+  .hero h1 span { color:var(--purple); }
+  .hero .subtitle { font-size:17px; color:var(--muted); max-width:700px; margin-bottom:26px; }
+  .meta-row { display:flex; gap:30px; flex-wrap:wrap; }
+  .meta-item { display:flex; flex-direction:column; gap:2px; }
+  .meta-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; }
+  .meta-value { font-size:13px; color:var(--text); font-weight:500; }
+
+
+  .container { max-width:1100px; margin:0 auto; padding:0 48px; }
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .three-col { display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; }
+
+
+  .section { padding:46px 0 0; }
+  .section-title { font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--muted); margin-bottom:6px; }
+  h2 { font-size:25px; font-weight:700; color:#e6edf3; margin-bottom:14px; }
+  h3 { font-size:16px; font-weight:600; color:var(--primary); margin:26px 0 10px; }
+  h4 { font-size:13.5px; font-weight:600; color:var(--purple); margin:18px 0 8px; text-transform:uppercase; letter-spacing:.04em; }
+  p { color:var(--text); margin-bottom:12px; }
+
+
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px 22px; }
+  .card-title { font-size:13px; font-weight:700; color:#e6edf3; margin-bottom:6px; }
+  .card p { font-size:13px; color:var(--muted); margin-bottom:0; }
+
+
+  .callout { border-left:3px solid; border-radius:0 8px 8px 0; padding:14px 18px; margin:18px 0; font-size:13.5px; }
+  .callout.info { border-color:var(--primary); background:rgba(88,166,255,.07); }
+  .callout.good { border-color:var(--green);   background:rgba(86,211,100,.07); }
+  .callout.warn { border-color:var(--yellow);  background:rgba(227,179,65,.07); }
+  .callout.key  { border-color:var(--accent);  background:rgba(247,129,102,.08); }
+  .callout strong { color:#e6edf3; }
+
+
+  pre,code { font-family:"JetBrains Mono","Fira Code",Consolas,monospace; font-size:12.5px; }
+  pre { background:var(--code-bg); border:1px solid var(--border); border-radius:8px; padding:18px 22px;
+    overflow-x:auto; margin:16px 0; line-height:1.55; color:#e6edf3; }
+  pre .c { color:var(--muted); }       /* comment */
+  pre .k { color:var(--purple); }       /* keyword */
+  pre .s { color:var(--green); }        /* string */
+  pre .f { color:var(--primary); }      /* function/type */
+  code { background:rgba(110,118,129,.2); padding:2px 6px; border-radius:4px; font-size:12px; }
+
+
+  .tbl-wrap { overflow-x:auto; margin:16px 0; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  th { background:rgba(48,54,61,.6); color:var(--muted); font-weight:600; text-transform:uppercase;
+    letter-spacing:.05em; font-size:11px; padding:9px 13px; text-align:left; border-bottom:1px solid var(--border); }
+  td { padding:9px 13px; border-bottom:1px solid rgba(48,54,61,.5); vertical-align:top; }
+  tr:hover td { background:rgba(48,54,61,.25); }
+  td code { font-size:11.5px; }
+
+
+  .badge { display:inline-block; border-radius:12px; padding:2px 10px; font-size:11px; font-weight:600; letter-spacing:.04em; }
+  .badge.blue{background:rgba(88,166,255,.15);color:var(--primary);}
+  .badge.green{background:rgba(86,211,100,.15);color:var(--green);}
+  .badge.yellow{background:rgba(227,179,65,.15);color:var(--yellow);}
+  .badge.purple{background:rgba(210,168,255,.15);color:var(--purple);}
+  .badge.orange{background:rgba(255,166,87,.15);color:var(--orange);}
+  .badge.red{background:rgba(247,129,102,.15);color:var(--accent);}
+
+
+  hr { border:none; border-top:1px solid var(--border); margin:46px 0 0; }
+
+
+  .arch-box { background:var(--code-bg); border:1px solid var(--border); border-radius:10px;
+    padding:24px 28px; margin:20px 0; overflow-x:auto; }
+  .arch-box pre { background:none; border:none; padding:0; margin:0; font-size:11.5px; }
+
+
+  .toc { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:22px 26px; margin:30px 0; }
+  .toc-title { font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:12px; }
+  .toc ol { padding-left:20px; columns:2; column-gap:40px; }
+  .toc li { margin:5px 0; break-inside:avoid; }
+  .toc a { color:var(--text); font-size:13px; }
+  .toc a:hover { color:var(--primary); }
+
+
+  .sig { background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--purple);
+    border-radius:0 8px 8px 0; padding:14px 18px; margin:12px 0; }
+  .sig code { background:none; padding:0; color:#e6edf3; font-size:12.5px; }
+  .sig .desc { color:var(--muted); font-size:12.5px; margin-top:6px; }
+
+
+  /* ── Interactive diagram styles ── */
+  .stage-wrap { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:22px; margin:18px 0; }
+  .diagram-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--purple); margin-bottom:16px; }
+  .diagram-title span { color:var(--muted); font-weight:500; text-transform:none; letter-spacing:0; }
+  .controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:14px 0; }
+  .btn { background:var(--primary); color:#0d1117; border:none; font-weight:600; font-size:13px; padding:9px 18px; border-radius:7px; cursor:pointer; font-family:inherit; }
+  .btn:hover { opacity:.9; }
+  .btn.ghost { background:transparent; color:var(--text); border:1px solid var(--border); }
+  .btn.ghost:hover { background:rgba(48,54,61,.5); }
+  .hint { color:var(--muted); font-size:12.5px; }
+  /* RRF */
+  .rrf-grid { display:grid; grid-template-columns:1fr 1fr 1fr 1.2fr; gap:16px; align-items:start; }
+  .rrf-col h4 { font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:10px; text-align:center; }
+  .rrf-item { border:1px solid var(--border); border-radius:7px; padding:9px 11px; margin-bottom:7px; font-size:12.5px; background:var(--code-bg); transition:all .3s; display:flex; justify-content:space-between; gap:8px; }
+  .rrf-item .rk { color:var(--muted); font-size:11px; }
+  .rrf-item.hl { border-color:var(--primary); background:rgba(88,166,255,.12); }
+  .rrf-col.final { background:rgba(86,211,100,.05); border:1px solid rgba(86,211,100,.25); border-radius:10px; padding:14px; }
+  .rrf-col.final .rrf-item { border-color:var(--green); } .rrf-col.final .rrf-item .sc { color:var(--green); font-weight:700; }
+  /* Graph */
+  .graph-grid { display:grid; grid-template-columns:1fr 300px; gap:20px; align-items:start; }
+  svg#kg { width:100%; height:auto; display:block; background:var(--code-bg); border:1px solid var(--border); border-radius:10px; }
+  .node circle { stroke-width:2; cursor:pointer; transition:all .2s; }
+  .node text { fill:#e6edf3; font-size:11px; font-weight:600; pointer-events:none; }
+  .node.dim { opacity:.22; } .node.seed circle { stroke:#fff; stroke-width:3.5; }
+  .edge { stroke:var(--border); stroke-width:1.5; transition:all .2s; }
+  .edge.dim { opacity:.12; } .edge.hl { stroke:var(--primary); stroke-width:2.5; }
+  .edge-label { fill:var(--muted); font-size:8.5px; pointer-events:none; } .edge-label.dim { opacity:.12; }
+  .ginfo { background:var(--code-bg); border:1px solid var(--border); border-radius:10px; padding:18px; min-height:300px; }
+  .ginfo h3 { font-size:15px; color:#e6edf3; margin:0 0 4px; }
+  .ginfo .etype { font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; margin-bottom:12px; }
+  .ginfo .row { font-size:12.5px; margin:5px 0; color:var(--muted); } .ginfo .row b { color:var(--text); }
+  .ginfo .reach { margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+  .ginfo .reach .pill { display:inline-block; font-size:11px; padding:2px 8px; border-radius:9px; background:rgba(88,166,255,.12); color:var(--primary); margin:3px 3px 0 0; }
+  .legend { display:flex; gap:14px; flex-wrap:wrap; margin-top:14px; font-size:11.5px; color:var(--muted); }
+  .legend span { display:inline-flex; align-items:center; gap:5px; } .legend i { width:11px; height:11px; border-radius:3px; display:inline-block; }
+  /* Memory */
+  .mem-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+  .mem-tier { border:1px solid var(--border); border-radius:10px; padding:14px; background:var(--code-bg); min-height:200px; }
+  .mem-tier h4 { font-size:12px; text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
+  .mem-tier .cap { font-size:11px; color:var(--muted); margin-bottom:10px; }
+  .mem-cell { font-size:11px; padding:6px 8px; border-radius:6px; margin-bottom:5px; background:var(--surface); border:1px solid var(--border); animation:pop .3s; }
+  @keyframes pop { from{opacity:0; transform:scale(.85);} to{opacity:1; transform:none;} }
+  .mem-cell.summary { border-color:var(--green); background:rgba(86,211,100,.1); color:var(--green); }
+  .t-working h4{color:var(--primary);} .t-episodic h4{color:var(--yellow);} .t-semantic h4{color:var(--green);} .t-procedural h4{color:var(--purple);}
+
+
+  @media (max-width:768px){
+    .hero{padding:36px 24px 32px;} .container{padding:0 24px;}
+    .two-col,.three-col{grid-template-columns:1fr;} .toc ol{columns:1;} .hero h1{font-size:27px;}
+    .rrf-grid{grid-template-columns:1fr 1fr;} .graph-grid{grid-template-columns:1fr;} .mem-grid{grid-template-columns:1fr 1fr;}
+  }
+</style>
+</head>
+<body>
+
+
+<div class="hero">
+  <div class="hero-tag">Low-Level Design · LLD</div>
+  <h1><span>NEXUS</span> — Detailed Design</h1>
+  <p class="subtitle">
+    Component-level specification: data models, persistence schemas, algorithms, interface contracts,
+    and sequence flows. This is the build specification behind the high-level architecture in the
+    <a href="HLD.html">HLD</a>. Interactive diagrams are embedded inline in their relevant sections below.
+  </p>
+  <div class="meta-row">
+    <div class="meta-item"><span class="meta-label">Document</span><span class="meta-value">Low-Level Design (LLD)</span></div>
+    <div class="meta-item"><span class="meta-label">Author</span><span class="meta-value">Aditya Shrivastava</span></div>
+    <div class="meta-item"><span class="meta-label">Version</span><span class="meta-value">0.1 · Draft</span></div>
+    <div class="meta-item"><span class="meta-label">Companions</span><span class="meta-value"><a href="HLD.html">HLD</a> · <a href="implementation.html">Implementation Guide</a></span></div>
+  </div>
+</div>
+
+
+<div class="container">
+
+
+<div class="toc">
+  <div class="toc-title">Contents</div>
+  <ol>
+    <li><a href="#intro">Introduction &amp; Conventions</a></li>
+    <li><a href="#models">Data Models &amp; Enumerations</a></li>
+    <li><a href="#persistence">Persistence Schemas</a></li>
+    <li><a href="#ingestion">Ingestion Pipeline</a></li>
+    <li><a href="#embeddings">Embedding Subsystem</a></li>
+    <li><a href="#retrieval">Retrieval Engine &amp; Algorithms</a></li>
+    <li><a href="#antirag">Anti-RAG Router</a></li>
+    <li><a href="#graph">Knowledge Graph &amp; Entity Resolution</a></li>
+    <li><a href="#memory">Memory Subsystem</a></li>
+    <li><a href="#governance">Governance Internals</a></li>
+    <li><a href="#agent">Agent Interface</a></li>
+    <li><a href="#sequences">Sequence Flows</a></li>
+    <li><a href="#eval">Evaluation Framework</a></li>
+    <li><a href="#consistency">Consistency, Latency &amp; Scale</a></li>
+    <li><a href="#threat">Threat Model</a></li>
+    <li><a href="#errors">Error Handling &amp; Edge Cases</a></li>
+  </ol>
+</div>
+
+
+<!-- 1. INTRO -->
+<hr /><div class="section" id="intro">
+  <div class="section-title">Section 1</div>
+  <h2>Introduction &amp; Conventions</h2>
+  <p>
+    This LLD specifies the internals of every component named in the <a href="HLD.html">HLD</a>. It is
+    written to be implementable directly: each subsystem lists its data structures, the algorithm in
+    pseudocode, and its public interface (method contracts). Code is illustrative Python-flavoured pseudocode.
+  </p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Convention</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>Model</code></td><td>A validated data object (Pydantic v2 in the implementation).</td></tr>
+        <tr><td><code>→</code></td><td>"returns" / "flows to" in signatures and flows.</td></tr>
+        <tr><td><span class="badge purple">interface</span></td><td>A public method contract other components depend on.</td></tr>
+        <tr><td>Big-O notes</td><td>Given per algorithm where relevant to scale.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- 2. DATA MODELS -->
+<hr /><div class="section" id="models">
+  <div class="section-title">Section 2</div>
+  <h2>Data Models &amp; Enumerations</h2>
+  <p>Everything stored or moved through NEXUS is one of these typed models. <code>KnowledgeChunk</code> is the atomic unit.</p>
+
+
+  <h3>2.1 Enumerations</h3>
+  <pre><span class="k">class</span> <span class="f">SensitivityLevel</span>(Enum):   PUBLIC &lt; INTERNAL &lt; CONFIDENTIAL &lt; RESTRICTED   <span class="c"># ordered</span>
+<span class="k">class</span> <span class="f">DataDomain</span>(Enum):        CUSTOMER, PRODUCT, MARKETING, ENGINEERING, OPERATIONS, COMPLIANCE, SPORTS, FINANCE
+<span class="k">class</span> <span class="f">MemoryTier</span>(Enum):        WORKING, EPISODIC, SEMANTIC, PROCEDURAL
+<span class="k">class</span> <span class="f">RetrievalStrategy</span>(Enum): DENSE, SPARSE, HYBRID, GRAPH, DIRECT, STRUCTURED, CACHED
+<span class="k">class</span> <span class="f">ChunkingStrategy</span>(Enum):  RECURSIVE, SEMANTIC, SENTENCE, FIXED
+<span class="k">class</span> <span class="f">EntityType</span>(Enum):        PLAYER, TEAM, LEAGUE, EVENT, MARKET, PRODUCT, CUSTOMER, EMPLOYEE, POLICY, REGULATION, JURISDICTION, SERVICE</pre>
+
+
+  <h3>2.2 KnowledgeChunk — the atomic unit</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>str (uuid)</td><td>Primary key</td></tr>
+        <tr><td><code>content</code></td><td>str</td><td>The chunk text</td></tr>
+        <tr><td><code>domain</code></td><td>DataDomain</td><td>Drives governance + graph linking</td></tr>
+        <tr><td><code>sensitivity</code></td><td>SensitivityLevel</td><td>ABAC enforcement key</td></tr>
+        <tr><td><code>source_uri</code></td><td>str</td><td>Origin (e.g. <code>s3://docs/x.pdf#p4</code>) for lineage</td></tr>
+        <tr><td><code>collection</code></td><td>str</td><td>Vector-store namespace</td></tr>
+        <tr><td><code>embedding</code></td><td>float[] | null</td><td>Dense vector</td></tr>
+        <tr><td><code>entity_refs</code></td><td>str[]</td><td>KG entity IDs mentioned in this chunk</td></tr>
+        <tr><td><code>metadata</code></td><td>dict</td><td>Arbitrary tags (jurisdiction, author, date…)</td></tr>
+        <tr><td><code>provenance_id</code></td><td>str | null</td><td>Link to its ProvenanceRecord</td></tr>
+        <tr><td><code>checksum</code></td><td>str</td><td>SHA-256 of content for dedup</td></tr>
+        <tr><td><code>token_count</code></td><td>int</td><td>For context-budget accounting</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+
+  <h3>2.3 Graph models</h3>
+  <pre><span class="k">class</span> <span class="f">Entity</span>:
+    id, name, entity_type, canonical_name, aliases[], domain,
+    properties{}, confidence: float,           <span class="c"># entity-resolution confidence</span>
+    source_chunks[],                            <span class="c"># chunks that mention this entity</span>
+    embedding: float[] | None                   <span class="c"># for similarity-based resolution</span>
+
+
+<span class="k">class</span> <span class="f">Relationship</span>:
+    id, source_entity_id, target_entity_id, relation_type, weight: float,
+    properties{}, bidirectional: bool,
+    valid_from, valid_until                      <span class="c"># temporal validity for time-bounded facts</span></pre>
+
+
+  <h3>2.4 Memory, retrieval &amp; governance models</h3>
+  <pre><span class="k">class</span> <span class="f">MemoryTrace</span>:  id, agent_id, session_id, turn_index, role, content,
+                    retrieved_chunks[], tool_calls[], timestamp, tier, compressed_into
+
+
+<span class="k">class</span> <span class="f">RetrievalResult</span>:  chunk: KnowledgeChunk, score: float, strategy: RetrievalStrategy,
+                       explanation: str, hop_path: str[] | None
+
+
+<span class="k">class</span> <span class="f">RetrievalRequest</span>:  query, agent_id, session_id, collections[]|None,
+                        strategy, top_k, min_score, sensitivity_cap, include_graph
+
+
+<span class="k">class</span> <span class="f">AccessClaim</span>:  principal_id, principal_type, domains[], max_sensitivity,
+                   collections[], expires_at, attributes{}    <span class="c"># ABAC attributes</span>
+
+
+<span class="k">class</span> <span class="f">ProvenanceRecord</span>:  id, entity_id, entity_type, activity, agent,
+                        used[], generated[], timestamp, metadata{}   <span class="c"># PROV-O shape</span>
+
+
+<span class="k">class</span> <span class="f">AgentContext</span>:  agent_id, session_id, working_memory[], retrieved_knowledge[],
+                     active_entities[], token_budget, used_tokens, retrieval_strategy_used</pre>
+</div>
+
+
+<!-- 3. PERSISTENCE -->
+<hr /><div class="section" id="persistence">
+  <div class="section-title">Section 3</div>
+  <h2>Persistence Schemas</h2>
+  <p>Per HLD principle P4, the relational metadata store is the system of record; the vector index and graph are rebuildable projections.</p>
+
+
+  <h4>Relational store (SQLite prototype → managed RDBMS in prod)</h4>
+  <pre><span class="k">CREATE TABLE</span> chunks (
+    id TEXT PRIMARY KEY, content TEXT, domain TEXT, sensitivity TEXT,
+    source_uri TEXT, collection TEXT, metadata JSON, checksum TEXT,
+    provenance_id TEXT, created_at TS, updated_at TS,
+    UNIQUE(checksum)                              <span class="c">-- idempotent ingestion / dedup</span>
+);
+<span class="k">CREATE TABLE</span> episodes (                          <span class="c">-- episodic memory</span>
+    id TEXT PRIMARY KEY, agent_id TEXT, session_id TEXT, turn_index INT,
+    role TEXT, content TEXT, retrieved_chunks JSON, timestamp TS,
+    compressed_into TEXT NULL                     <span class="c">-- chunk id of summary; NULL = not yet compressed</span>
+);
+<span class="k">CREATE INDEX</span> ix_episodes_agent <span class="k">ON</span> episodes(agent_id, turn_index);
+<span class="k">CREATE TABLE</span> provenance (
+    id TEXT PRIMARY KEY, entity_id TEXT, entity_type TEXT, activity TEXT,
+    agent TEXT, used JSON, generated JSON, timestamp TS, metadata JSON
+);
+<span class="k">CREATE TABLE</span> audit_log (                         <span class="c">-- append-only; never UPDATE/DELETE</span>
+    seq INTEGER PRIMARY KEY AUTOINCREMENT, ts TS, principal_id TEXT,
+    query_hash TEXT, strategy TEXT, returned_ids JSON,
+    excluded_count INT, exclude_reasons JSON
+);</pre>
+
+
+  <h4>Vector store layout</h4>
+  <p>One logical index per <code>collection</code>. Each record: <code>{chunk_id, embedding[], collection, model_id}</code>.
+  Records carry their embedding <code>model_id</code> so cross-collection results can be normalised before fusion.</p>
+
+
+  <h4>Graph store layout</h4>
+  <p>Directed property graph. Nodes keyed by canonical entity ID; edges typed and weighted with temporal validity.
+  Adjacency stored as lists for sparse, BFS-friendly traversal.</p>
+</div>
+
+
+<!-- 4. INGESTION -->
+<hr /><div class="section" id="ingestion">
+  <div class="section-title">Section 4</div>
+  <h2>Ingestion Pipeline</h2>
+  <pre>Source ─▶ Extract ─▶ Chunk ─▶ Tag(domain,sensitivity,collection) ─▶ PII-scan
+       ─▶ Embed ─▶ Entity-link(KG) ─▶ Provenance ─▶ Store(metadata+vector+graph)</pre>
+
+
+  <h3>4.1 Chunking strategy selection</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Content type</th><th>Strategy</th><th>Target size</th><th>Overlap</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>General docs</td><td><code>RECURSIVE</code></td><td>512 tok</td><td>20%</td><td>Paragraph-aware; balances context vs precision</td></tr>
+        <tr><td>Dense knowledge</td><td><code>SEMANTIC</code></td><td>variable</td><td>0%</td><td>Embedding boundaries; no artificial splits</td></tr>
+        <tr><td>Legal / regulatory</td><td><code>SENTENCE</code></td><td>3–5 sent</td><td>1 sent</td><td>Preserves legal precision</td></tr>
+        <tr><td>Code / structured</td><td><code>FIXED</code></td><td>256 tok</td><td>0%</td><td>Structure &gt; semantic continuity</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+
+  <h3>4.2 Deduplication</h3>
+  <p>Exact dedup via SHA-256 checksum (DB UNIQUE constraint → idempotent re-ingestion). Near-duplicate detection
+  via embedding cosine ≥ 0.97 at ingest → versioned, not overwritten.</p>
+
+
+  <h3>4.3 Interface</h3>
+  <div class="sig"><code>IngestionPipeline.ingest(source: Source, claims: AccessClaim) → list[KnowledgeChunk]</code>
+    <div class="desc">Runs the full pipeline; raises <code>AccessError</code> if the principal may not ingest into the target collection. Idempotent on checksum.</div>
+  </div>
+</div>
+
+
+<!-- 5. EMBEDDINGS -->
+<hr /><div class="section" id="embeddings">
+  <div class="section-title">Section 5</div>
+  <h2>Embedding Subsystem</h2>
+  <div class="callout info"><strong>No model lock-in.</strong> All embedding access goes through one interface. The prototype uses a local model, falling back to a pure-Python hashing/TF-IDF vectoriser so the demo runs with zero installs. Production swaps in a hosted or fine-tuned model — callers don't change.</div>
+  <div class="sig"><code>Embedder.encode(text: str) → float[]</code><div class="desc">Returns an L2-normalised dense vector. Batched variant <code>encode_many(texts)</code> for ingestion throughput.</div></div>
+  <div class="sig"><code>Embedder.model_id → str</code><div class="desc">Identifies the model so collections record which space their vectors live in.</div></div>
+
+
+  <h4>HyDE (short-query expansion)</h4>
+  <p>When a query has &lt; 8 tokens, optionally generate a hypothetical answer with the LLM and embed <em>that</em> — it is a closer proxy to target documents than the bare question.</p>
+</div>
+
+
+<!-- 6. RETRIEVAL -->
+<hr /><div class="section" id="retrieval">
+  <div class="section-title">Section 6</div>
+  <h2>Retrieval Engine &amp; Algorithms</h2>
+  <p>Three independent retrievers produce ranked candidate lists; Reciprocal Rank Fusion merges them; governance filters the result.</p>
+
+
+  <h3>6.1 Sparse — BM25</h3>
+  <pre><span class="c"># Okapi BM25. Inverted index maps term → posting list. O(query_terms × postings).</span>
+<span class="k">def</span> <span class="f">bm25_score</span>(query, doc, idf, avgdl, k1=1.5, b=0.75):
+    score = 0
+    <span class="k">for</span> term <span class="k">in</span> query:
+        f = freq(term, doc)
+        score += idf[term] * (f*(k1+1)) / (f + k1*(1 - b + b*len(doc)/avgdl))
+    <span class="k">return</span> score</pre>
+
+
+  <h3>6.2 Dense — ANN cosine</h3>
+  <p>Query embedded once; nearest neighbours by cosine. Production uses an HNSW index (≈O(log n)); prototype uses brute-force cosine (O(n)) which is fine at demo scale.</p>
+
+
+  <h3>6.3 Graph RAG — multi-hop</h3>
+  <pre><span class="k">def</span> <span class="f">graph_rag</span>(query, max_hops=3, degree_cap=8):
+    seeds   = [kg.resolve(e) <span class="k">for</span> e <span class="k">in</span> extract_entities(query)]
+    visited = bfs(seeds, max_hops, degree_cap)        <span class="c"># cap fan-out to top-N edges by weight</span>
+    chunks  = flatten(e.source_chunks <span class="k">for</span> e <span class="k">in</span> visited)
+    <span class="k">return</span> [(c, proximity_score(hop_distance[c])) <span class="k">for</span> c <span class="k">in</span> chunks]</pre>
+  <p class="desc" style="color:var(--muted);font-size:12.5px">Degree cap + hop cap prevent combinatorial blow-up on high-degree nodes (see §14).</p>
+
+
+  <h3>6.4 Fusion — Reciprocal Rank Fusion</h3>
+  <pre><span class="c"># Rank-based, parameter-free, robust to incomparable score scales.</span>
+<span class="k">def</span> <span class="f">rrf</span>(ranked_lists, k=60):
+    scores = defaultdict(float)
+    <span class="k">for</span> lst <span class="k">in</span> ranked_lists:                  <span class="c"># [dense, sparse, graph]</span>
+        <span class="k">for</span> rank, chunk_id <span class="k">in</span> enumerate(lst):
+            scores[chunk_id] += 1.0 / (k + rank)
+    <span class="k">return</span> sorted(scores, key=scores.get, reverse=True)</pre>
+  <div class="callout good"><strong>Why RRF over weighted average:</strong> no per-query weight tuning, no score normalisation, no labeled data needed to start — yet competitive with tuned weighted sums on standard benchmarks.</div>
+
+
+  <div class="stage-wrap">
+    <div class="diagram-title">Interactive · RRF Fusion <span>— press Fuse to merge the three rankings</span></div>
+    <div class="controls">
+      <button class="btn" id="rrfFuse">Fuse with RRF ▶</button>
+      <button class="btn ghost" id="rrfReset">Reset</button>
+      <span class="hint">score(chunk) = Σ 1 / (k + rank), &nbsp; k = 60</span>
+    </div>
+    <div class="rrf-grid">
+      <div class="rrf-col" id="colBM25"><h4 style="color:var(--orange)">BM25 (sparse)</h4></div>
+      <div class="rrf-col" id="colDense"><h4 style="color:var(--primary)">Dense (vector)</h4></div>
+      <div class="rrf-col" id="colGraph"><h4 style="color:var(--purple)">Graph (multi-hop)</h4></div>
+      <div class="rrf-col final" id="colFinal"><h4 style="color:var(--green)">Fused result</h4></div>
+    </div>
+  </div>
+
+
+  <h3>6.5 Reranking (production)</h3>
+  <p>A cross-encoder re-scores only the post-fusion top-20 as (query, chunk) pairs. Expensive, so bounded to the shortlist; skippable under load.</p>
+
+
+  <h3>6.6 Interface</h3>
+  <div class="sig"><code>HybridRetriever.search(req: RetrievalRequest, claims: AccessClaim) → list[RetrievalResult]</code>
+    <div class="desc">Routes (§7), runs the enabled retrievers, fuses by RRF, applies governance (§10), returns governed, ranked results with per-result strategy + explanation.</div>
+  </div>
+</div>
+
+
+<!-- 7. ANTI-RAG -->
+<hr /><div class="section" id="antirag">
+  <div class="section-title">Section 7</div>
+  <h2>Anti-RAG Router</h2>
+  <p>Routing decides <em>whether</em> and <em>how</em> to retrieve. Skipping retrieval where it would hurt is the cheapest quality win in the system.</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Route</th><th>Trigger signal</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge blue">DIRECT</span></td><td>General knowledge / math / formatting</td><td>Skip retrieval; LLM answers directly</td></tr>
+        <tr><td><span class="badge orange">STRUCTURED</span></td><td>"current", "live", "balance", "odds now"</td><td>Route to API/SQL, not the vector store</td></tr>
+        <tr><td><span class="badge green">CACHED</span></td><td>Semantic cache hit (cos ≥ 0.97)</td><td>Return cached result; skip all retrieval</td></tr>
+        <tr><td><span class="badge purple">GRAPH</span></td><td>Multiple named entities / relational question</td><td>Graph-first traversal</td></tr>
+        <tr><td><span class="badge yellow">HYBRID</span></td><td>Document/policy reasoning (default)</td><td>Full sparse+dense+graph → RRF</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <pre><span class="k">def</span> <span class="f">classify</span>(query) -> RetrievalStrategy:
+    <span class="k">if</span> semantic_cache.hit(query):            <span class="k">return</span> CACHED
+    <span class="k">if</span> has_temporal_or_live_signal(query):   <span class="k">return</span> STRUCTURED
+    <span class="k">if</span> is_general_knowledge(query):          <span class="k">return</span> DIRECT
+    <span class="k">if</span> entity_count(query) &gt;= 2:             <span class="k">return</span> GRAPH
+    <span class="k">return</span> HYBRID                            <span class="c"># safe default</span></pre>
+  <p class="desc" style="color:var(--muted);font-size:12.5px">Prototype = rule engine; production = fine-tuned classifier, evaluated by router accuracy (§13).</p>
+</div>
+
+
+<!-- 8. GRAPH -->
+<hr /><div class="section" id="graph">
+  <div class="section-title">Section 8</div>
+  <h2>Knowledge Graph &amp; Entity Resolution</h2>
+
+
+  <h3>8.1 Entity resolution</h3>
+  <pre><span class="c"># Map a surface form ("P. Mahomes") to a canonical entity. Confidence-gated.</span>
+<span class="k">def</span> <span class="f">resolve</span>(name) -> (Entity, confidence):
+    <span class="k">if</span> exact_canonical_match(name):       <span class="k">return</span> e, 1.00
+    <span class="k">if</span> alias_table.get(name):            <span class="k">return</span> e, 0.95
+    <span class="k">if</span> levenshtein_match(name, max=2):   <span class="k">return</span> e, 0.80
+    <span class="k">if</span> embedding_cosine(name) &gt;= 0.92:   <span class="k">return</span> e, 0.75
+    <span class="k">return</span> new_entity(name), 0.0          <span class="c"># &lt;0.7 ⇒ create + flag, never auto-merge</span></pre>
+
+
+  <h3>8.2 Traversal &amp; temporal edges</h3>
+  <p>BFS with hop + degree caps (§6.3, §14). Edges carry <code>valid_from / valid_until</code>; traversal filters to edges valid at query time unless a point-in-time is given.</p>
+
+
+  <h3>8.3 Ontology (reference domain: regulated sports betting)</h3>
+  <pre>PLAYER ──PLAYS_FOR──▶ TEAM ──COMPETES_IN──▶ LEAGUE
+EVENT  ──HAS_MARKET──▶ MARKET ──GOVERNED_BY──▶ POLICY ──APPLIES_IN──▶ JURISDICTION
+PRODUCT ──REGULATED_BY──▶ REGULATION       ENTITY ──DESCRIBED_BY──▶ CHUNK</pre>
+
+
+  <h3>8.4 Interface</h3>
+  <div class="sig"><code>KnowledgeGraph.upsert_entity(e) · upsert_relationship(r) · resolve(name) · neighbors(id, hops, degree_cap)</code></div>
+
+
+  <div class="stage-wrap">
+    <div class="diagram-title">Interactive · Knowledge Graph <span>— click an entity; slide the hop depth</span></div>
+    <div class="controls">
+      <label class="hint">Traversal depth:</label>
+      <input type="range" id="hopRange" min="1" max="3" value="2" step="1" />
+      <span class="hint" id="hopLabel">2 hops</span>
+      <button class="btn ghost" id="graphReset">Clear selection</button>
+    </div>
+    <div class="graph-grid">
+      <svg id="kg" viewBox="0 0 800 440" preserveAspectRatio="xMidYMid meet" aria-label="Knowledge graph"></svg>
+      <div class="ginfo" id="ginfo">
+        <h3>Click an entity</h3>
+        <p style="font-size:13px;color:var(--muted)">Select a node to see its type, properties, and everything reachable within the chosen number of hops — the cross-domain context an agent would receive.</p>
+      </div>
+    </div>
+    <div class="legend" id="kgLegend"></div>
+  </div>
+</div>
+
+
+<!-- 9. MEMORY -->
+<hr /><div class="section" id="memory">
+  <div class="section-title">Section 9</div>
+  <h2>Memory Subsystem</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Tier</th><th>Structure</th><th>Eviction</th><th>Latency</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge blue">Working</span></td><td>Bounded deque (~10 turns / token budget)</td><td>FIFO → demote to Episodic</td><td>O(1)</td></tr>
+        <tr><td><span class="badge yellow">Episodic</span></td><td>SQLite <code>episodes</code></td><td>Compress &gt; N turns → Semantic</td><td>~1ms</td></tr>
+        <tr><td><span class="badge green">Semantic</span></td><td>Vector store + KG</td><td>Versioned; never hard-deleted</td><td>~50–200ms</td></tr>
+        <tr><td><span class="badge purple">Procedural</span></td><td>In-memory registry</td><td>Manual version bump</td><td>O(1)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+
+  <h3>9.1 Episodic compression</h3>
+  <pre><span class="k">def</span> <span class="f">compress</span>(agent_id):
+    traces = uncompressed_traces(agent_id)           <span class="c"># &gt; N (default 20)</span>
+    summary = llm_summarize(traces) <span class="k">or</span> extractive_fallback(traces)
+    chunk   = KnowledgeChunk(content=summary, collection=<span class="s">"episodic_summaries"</span>, ...)
+    semantic.store(chunk)
+    provenance.record(activity=<span class="s">"episodic_compression"</span>, used=trace_ids, generated=[chunk.id])
+    mark_compressed(trace_ids, into=chunk.id)         <span class="c"># UPDATE, never DELETE — full audit trail</span></pre>
+  <div class="callout key"><strong>Compression is explicit and reversible.</strong> Traces are marked <code>compressed_into</code>, never deleted — so "what was actually said" is always recoverable for audit.</div>
+
+
+  <h3>9.2 Memory Manager interface</h3>
+  <div class="sig"><code>MemoryManager.acquire(trace: MemoryTrace) → None</code><div class="desc">Push to working + episodic; trigger compression if threshold crossed.</div></div>
+  <div class="sig"><code>MemoryManager.retrieve(req: RetrievalRequest, claims) → list[RetrievalResult]</code><div class="desc">Delegates to the retrieval engine.</div></div>
+  <div class="sig"><code>MemoryManager.compile_context(agent_id, session_id, results) → AgentContext</code><div class="desc">Assembles working memory + governed results + active entities into a token-budgeted context window.</div></div>
+
+
+  <div class="stage-wrap">
+    <div class="diagram-title">Interactive · Memory Tiers <span>— add turns and watch overflow + compression</span></div>
+    <div class="controls">
+      <button class="btn" id="memAdd">Add a turn ▶</button>
+      <button class="btn ghost" id="memReset">Reset</button>
+      <span class="hint" id="memHint">Working cap = 4 · Episodic compresses at 6</span>
+    </div>
+    <div class="mem-grid">
+      <div class="mem-tier t-working"><h4>Working</h4><div class="cap">deque · cap 4 · O(1)</div><div id="memWorking"></div></div>
+      <div class="mem-tier t-episodic"><h4>Episodic</h4><div class="cap">SQLite · compress @6</div><div id="memEpisodic"></div></div>
+      <div class="mem-tier t-semantic"><h4>Semantic</h4><div class="cap">vector + graph</div><div id="memSemantic"></div></div>
+      <div class="mem-tier t-procedural"><h4>Procedural</h4><div class="cap">tool registry</div><div id="memProcedural"></div></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- 10. GOVERNANCE -->
+<hr /><div class="section" id="governance">
+  <div class="section-title">Section 10</div>
+  <h2>Governance Internals</h2>
+
+
+  <h3>10.1 ABAC evaluation (fail-closed)</h3>
+  <pre><span class="k">def</span> <span class="f">permits</span>(claim: AccessClaim, c: KnowledgeChunk) -> bool:
+    <span class="k">if</span> level(c.sensitivity) &gt; level(claim.max_sensitivity): <span class="k">return</span> False
+    <span class="k">if</span> c.domain <span class="k">not in</span> claim.domains:                     <span class="k">return</span> False
+    <span class="k">if</span> claim.collections <span class="k">and</span> c.collection <span class="k">not in</span> claim.collections: <span class="k">return</span> False
+    <span class="k">if</span> <span class="k">not</span> attributes_match(claim.attributes, c.metadata):  <span class="k">return</span> False  <span class="c"># e.g. jurisdiction</span>
+    <span class="k">return</span> True
+<span class="c"># Excluded chunks are dropped silently — never error — so error text can't leak their existence.</span></pre>
+
+
+  <h3>10.2 Provenance (PROV-O)</h3>
+  <p>Every chunk/entity/summary links to a <code>ProvenanceRecord</code> capturing <em>activity</em>, <em>agent</em>, <em>used</em> (inputs) and <em>generated</em> (outputs) — forming a lineage DAG walkable backward from any artifact to its source.</p>
+
+
+  <h3>10.3 Audit log</h3>
+  <p>Append-only. Every retrieval logs principal, hashed query, strategy, returned IDs, and how many chunks were excluded and why (category, not content). Never updated or deleted.</p>
+
+
+  <h3>10.4 PII classifier</h3>
+  <p>Runs per chunk at ingestion (regex + model). A hit escalates sensitivity to <code>RESTRICTED</code> and raises a compliance flag requiring approval before the chunk joins a shared collection.</p>
+</div>
+
+
+<!-- 11. AGENT -->
+<hr /><div class="section" id="agent">
+  <div class="section-title">Section 11</div>
+  <h2>Agent Interface</h2>
+  <p>A new agent is a small subclass; the memory lifecycle is inherited. The LLM is isolated behind one method.</p>
+  <pre><span class="k">class</span> <span class="f">BaseAgent</span>(ABC):
+    <span class="k">def</span> <span class="f">think</span>(self, user_input) -> str:
+        self.memory.acquire(MemoryTrace(role=<span class="s">"user"</span>, content=user_input, ...))
+        results = self.memory.retrieve(RetrievalRequest(query=user_input, ...), self.claims)
+        ctx     = self.memory.compile_context(self.agent_id, self.session_id, results)
+        answer  = self._call_llm(ctx.context_string(), user_input)      <span class="c"># subclass / model seam</span>
+        self.memory.acquire(MemoryTrace(role=<span class="s">"assistant"</span>, content=answer, ...))
+        <span class="k">return</span> answer
+
+
+    @abstractmethod
+    <span class="k">def</span> <span class="f">_call_llm</span>(self, context: str, query: str) -> str: ...</pre>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Lifecycle hook</th><th>Trigger</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><code>on_eviction</code></td><td>Working memory overflow</td><td>Demote trace to episodic</td></tr>
+        <tr><td><code>on_compression</code></td><td>Episodic &gt; threshold</td><td>Summarise → semantic; audit</td></tr>
+        <tr><td><code>on_session_end</code></td><td>Session closes</td><td>Flush working memory; write session summary</td></tr>
+        <tr><td><code>on_forget</code></td><td>Governed deletion</td><td>Mark deleted + audit; never hard-delete</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- 12. SEQUENCES -->
+<hr /><div class="section" id="sequences">
+  <div class="section-title">Section 12</div>
+  <h2>Sequence Flows</h2>
+  <p>A step-through, interactive version of the query flow is embedded in the <a href="HLD.html">HLD</a> (Architecture section).</p>
+
+
+  <h4>12.1 Query turn</h4>
+  <div class="arch-box"><pre>Agent        MemoryManager     Router      Retriever    Governance     Stores
+  │ think(q)      │                │            │            │             │
+  ├──acquire─────▶│ store working+episodic      │            │             │
+  ├──retrieve────▶│──classify(q)──▶│            │            │             │
+  │               │◀──strategy─────┤            │            │             │
+  │               │──search(q)──────────────────▶│ sparse+dense+graph─────▶│
+  │               │               │            │◀──candidates────────────┤
+  │               │               │            │──RRF fuse                │
+  │               │               │            │──filter(claims)─────────▶│ ABAC
+  │               │◀──governed results──────────┤            │             │
+  ├──compile_context──▶ build AgentContext      │            │             │
+  │◀──context─────┤                │            │            │             │
+  ├──_call_llm──▶ answer grounded in context    │            │             │
+  └──acquire(assistant) ; audit_log.append      │            │             │</pre></div>
+
+
+  <h4>12.2 Ingestion</h4>
+  <div class="arch-box"><pre>Source ─▶ Extract ─▶ Chunk ─▶ Tag/PII ─▶ Embed ─▶ Link(KG)
+                                                       │
+   metadata.insert (TXN + outbox) ◀── Provenance ◀─────┘
+                                                       └─▶ vector.upsert ; graph.upsert (async, idempotent)</pre></div>
+</div>
+
+
+<!-- 13. EVAL -->
+<hr /><div class="section" id="eval">
+  <div class="section-title">Section 13</div>
+  <h2>Evaluation Framework</h2>
+  <div class="callout key"><strong>You cannot ship retrieval you cannot measure.</strong> The eval harness is a Day-1 CI gate, not a late-stage task — a retrieval system without it degrades silently.</div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Layer</th><th>Metrics</th><th>Catches</th></tr></thead>
+      <tbody>
+        <tr><td>Component retrieval</td><td>recall@k, precision@k, MRR, nDCG@k</td><td>Right chunk not retrieved / ranked too low</td></tr>
+        <tr><td>End-to-end generation</td><td>faithfulness, answer relevance, context precision/recall</td><td>Hallucination; "right docs, wrong answer"</td></tr>
+        <tr><td>Router</td><td>routing accuracy (confusion matrix)</td><td>Wrong strategy chosen for query intent</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h4>Golden set bootstrap</h4>
+  <p>LLM-generated (chunk → questions) → human-validated subset → production-mined from real feedback → adversarial edge cases. New chunking/embedding/retrieval changes must pass the suite in CI; new strategies run in production shadow mode before promotion.</p>
+</div>
+
+
+<!-- 14. CONSISTENCY -->
+<hr /><div class="section" id="consistency">
+  <div class="section-title">Section 14</div>
+  <h2>Consistency, Latency &amp; Scale</h2>
+
+
+  <h3>14.1 Multi-store consistency</h3>
+  <p>The relational metadata store is the single system of record; vector + graph are derived projections. Ingestion writes the source-of-truth row plus an <strong>outbox event</strong> in one transaction; an async, idempotent relay updates the derived indexes; a periodic reconciliation job repairs drift.</p>
+  <div class="callout warn"><strong>Eventual consistency is acceptable here</strong> — a chunk searchable two seconds late is fine. This path never touches money; transactional systems remain the record for wagers/balances.</div>
+
+
+  <h3>14.2 Latency budget (p99 ≤ 800ms target)</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Stage</th><th>p99</th><th>Mitigation</th></tr></thead>
+      <tbody>
+        <tr><td>Routing</td><td>5ms</td><td>CACHED/DIRECT short-circuit everything below</td></tr>
+        <tr><td>Dense ANN</td><td>60ms</td><td>HNSW; tunable recall/latency knob</td></tr>
+        <tr><td>Graph BFS (3-hop)</td><td>180ms</td><td>Hop cap + degree cap + precomputed hot neighbourhoods</td></tr>
+        <tr><td>Governance</td><td>15ms</td><td>Predicate eval per candidate</td></tr>
+        <tr><td>Rerank</td><td>350ms</td><td>Top-20 only; skippable under load</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+
+  <h3>14.3 Scale</h3>
+  <p>Stateless retrievers behind a load balancer; vector index sharded per collection; async batched ingestion with backpressure. Targets: 50M+ chunks, 10M+ graph nodes, 500+ retrieval QPS.</p>
+</div>
+
+
+<!-- 15. THREAT -->
+<hr /><div class="section" id="threat">
+  <div class="section-title">Section 15</div>
+  <h2>Threat Model</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Threat</th><th>Vector</th><th>Defense</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge red">Indirect prompt injection</span></td><td>Malicious instructions inside ingested content get executed</td><td>Instruction/data separation in prompt; provenance trust scoring; tool-call allow-listing; output validation</td></tr>
+        <tr><td><span class="badge red">Memory poisoning</span></td><td>False user claims promoted to durable "fact" via compression</td><td>User claims never auto-promoted; provenance trust level; human-in-loop for high-sensitivity promotion</td></tr>
+        <tr><td><span class="badge red">Data exfiltration</span></td><td>Crafted queries extract RESTRICTED content</td><td>ABAC fail-closed; per-principal retrieval-volume anomaly detection; rate limits</td></tr>
+        <tr><td><span class="badge red">Cross-domain leakage</span></td><td>Agent retrieves content outside its jurisdiction/domain</td><td>Collection isolation; attribute match on jurisdiction; chunk-level sensitivity cap</td></tr>
+        <tr><td><span class="badge red">Embedding inversion</span></td><td>Raw vectors partially reconstruct source text</td><td>Encrypt vectors at rest; access-control the raw store; never expose embeddings to clients</td></tr>
+        <tr><td><span class="badge red">Graph poisoning</span></td><td>Adversarial input forces a wrong entity merge</td><td>Confidence threshold (&lt;0.7 → new node, flagged); relationship provenance; integrity audit</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- 16. ERRORS -->
+<hr /><div class="section" id="errors">
+  <div class="section-title">Section 16</div>
+  <h2>Error Handling &amp; Edge Cases</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Case</th><th>Behaviour</th></tr></thead>
+      <tbody>
+        <tr><td>Embedding model unavailable</td><td>Fall back to pure-Python vectoriser; log degraded mode; never crash the demo</td></tr>
+        <tr><td>No retrieval results</td><td>Agent answers from working memory / states it lacks grounded knowledge — never fabricates</td></tr>
+        <tr><td>Derived-index write fails post-commit</td><td>Outbox retries; reconciliation repairs; source of truth already durable</td></tr>
+        <tr><td>Entity resolution ambiguous (&lt;0.7)</td><td>Create new node, flag for review; never silently merge two real entities</td></tr>
+        <tr><td>Access claim expired</td><td>Treat as no access (fail-closed); audit the denied attempt</td></tr>
+        <tr><td>Query exceeds context budget</td><td>Trim lowest-scored results first; keep working memory + top governed results</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+
+  <div class="callout info" style="margin-top:24px">
+    Interactive diagrams are embedded throughout this document — RRF fusion (§6), the knowledge graph (§8), and
+    the memory tiers (§9) — plus the architecture explorer and query-flow animator in the <a href="HLD.html"><strong>HLD</strong></a>.
+  </div>
+  <div style="height:24px"></div>
+</div>
+
+
+</div>
+
+
+<footer style="border-top:1px solid var(--border); margin-top:60px; padding:24px 48px; color:var(--muted); font-size:12px; max-width:1100px; margin:60px auto 0; display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px">
+  <span>NEXUS — Low-Level Design (LLD) · v0.1 Draft</span>
+  <span>Author: Aditya Shrivastava</span>
+</footer>
+
+
+<script>
+/* ===== RRF Fusion ===== */
+const RRF_K=60;
+const lists={
+  BM25:['New Jersey reg','Boost policy','RG limits','MVP market'],
+  Dense:['Boost policy','New Jersey reg','OddsBoost feature','RG limits'],
+  Graph:['MVP market','Boost policy','New Jersey reg','OddsBoost feature'],
+};
+function renderRRFCols(){
+  for(const [k,arr] of Object.entries(lists)){ const col=document.getElementById('col'+k);
+    col.querySelectorAll('.rrf-item').forEach(e=>e.remove());
+    arr.forEach((name,r)=>{ const d=document.createElement('div'); d.className='rrf-item'; d.dataset.name=name;
+      d.innerHTML=`<span>${name}</span><span class="rk">#${r+1}</span>`; col.appendChild(d); }); }
+  const f=document.getElementById('colFinal'); f.querySelectorAll('.rrf-item').forEach(e=>e.remove());
+}
+function fuse(){
+  const scores={}; for(const arr of Object.values(lists)) arr.forEach((name,r)=>{ scores[name]=(scores[name]||0)+1/(RRF_K+r); });
+  const ranked=Object.entries(scores).sort((a,b)=>b[1]-a[1]); const f=document.getElementById('colFinal');
+  ranked.forEach(([name,sc],i)=>{ setTimeout(()=>{
+      document.querySelectorAll('.rrf-item').forEach(e=>e.classList.toggle('hl', e.dataset.name===name));
+      const d=document.createElement('div'); d.className='rrf-item'; d.dataset.name=name;
+      d.innerHTML=`<span>${name}</span><span class="sc">${sc.toFixed(4)}</span>`; f.appendChild(d); }, i*450); });
+  setTimeout(()=>document.querySelectorAll('.rrf-item').forEach(e=>e.classList.remove('hl')), ranked.length*450+400);
+}
+document.getElementById('rrfFuse').addEventListener('click',fuse);
+document.getElementById('rrfReset').addEventListener('click',renderRRFCols);
+renderRRFCols();
+
+
+/* ===== Knowledge Graph ===== */
+const TYPE_COLOR={PLAYER:'#58a6ff',TEAM:'#56d364',LEAGUE:'#d2a8ff',EVENT:'#ffa657',MARKET:'#e3b341',
+  POLICY:'#f78166',JURISDICTION:'#56d4c0',REGULATION:'#ff7b9c',PRODUCT:'#79c0ff',CHUNK:'#8b949e'};
+const NODES=[
+  {id:'mahomes',label:'P. Mahomes',type:'PLAYER',x:120,y:90,props:{position:'QB',status:'active'}},
+  {id:'chiefs',label:'KC Chiefs',type:'TEAM',x:310,y:60,props:{city:'Kansas City'}},
+  {id:'nfl',label:'NFL',type:'LEAGUE',x:520,y:70,props:{sport:'Football'}},
+  {id:'event',label:'NFL Season',type:'EVENT',x:560,y:200,props:{status:'in-progress'}},
+  {id:'mvp',label:'NFL MVP',type:'MARKET',x:360,y:210,props:{type:'futures'}},
+  {id:'policy',label:'Boost Policy',type:'POLICY',x:340,y:340,props:{version:'v4'}},
+  {id:'nj',label:'New Jersey',type:'JURISDICTION',x:560,y:350,props:{compliance:'high'}},
+  {id:'reg',label:'NJ Reg 2026',type:'REGULATION',x:710,y:280,props:{body:'NJ ABC'}},
+  {id:'oddsboost',label:'OddsBoost',type:'PRODUCT',x:150,y:300,props:{version:'3.2'}},
+  {id:'chunk',label:'Sports doc',type:'CHUNK',x:120,y:200,props:{collection:'sports'}},
+];
+const EDGES=[
+  {s:'mahomes',t:'chiefs',l:'PLAYS_FOR'},{s:'chiefs',t:'nfl',l:'COMPETES_IN'},
+  {s:'mahomes',t:'event',l:'PARTICIPATES_IN'},{s:'event',t:'nfl',l:'PART_OF'},
+  {s:'event',t:'mvp',l:'HAS_MARKET'},{s:'mvp',t:'policy',l:'GOVERNED_BY'},
+  {s:'policy',t:'nj',l:'APPLIES_IN'},{s:'nj',t:'reg',l:'HAS_REGULATION'},
+  {s:'oddsboost',t:'mvp',l:'SUPPORTS'},{s:'mahomes',t:'chunk',l:'DESCRIBED_BY'},
+];
+const adj={}; NODES.forEach(n=>adj[n.id]=[]); EDGES.forEach(e=>{ adj[e.s].push(e.t); adj[e.t].push(e.s); });
+function bfs(seed,maxHops){ const dist={[seed]:0}, q=[seed];
+  while(q.length){ const cur=q.shift(); if(dist[cur]>=maxHops) continue;
+    adj[cur].forEach(n=>{ if(dist[n]===undefined){ dist[n]=dist[cur]+1; q.push(n); } }); } return dist; }
+const svg=document.getElementById('kg'), SVGNS='http://www.w3.org/2000/svg';
+function el(tag,attrs){ const e=document.createElementNS(SVGNS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); return e; }
+const nodeById=Object.fromEntries(NODES.map(n=>[n.id,n]));
+function drawGraph(){ svg.innerHTML='';
+  EDGES.forEach(e=>{ const a=nodeById[e.s],b=nodeById[e.t];
+    const line=el('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,class:'edge'}); line.dataset.s=e.s; line.dataset.t=e.t; svg.appendChild(line);
+    const lab=el('text',{x:(a.x+b.x)/2,y:(a.y+b.y)/2-3,class:'edge-label','text-anchor':'middle'}); lab.textContent=e.l; lab.dataset.s=e.s; lab.dataset.t=e.t; svg.appendChild(lab); });
+  NODES.forEach(n=>{ const g=el('g',{class:'node'}); g.dataset.id=n.id;
+    g.appendChild(el('circle',{cx:n.x,cy:n.y,r:24,fill:TYPE_COLOR[n.type]+'33',stroke:TYPE_COLOR[n.type]}));
+    const tt=el('text',{x:n.x,y:n.y+4,'text-anchor':'middle','font-size':'8',fill:TYPE_COLOR[n.type]}); tt.textContent=n.type;
+    const t=el('text',{x:n.x,y:n.y+38,'text-anchor':'middle'}); t.textContent=n.label;
+    g.appendChild(tt); g.appendChild(t); g.addEventListener('click',()=>selectNode(n.id)); svg.appendChild(g); }); }
+function selectNode(id){ const maxHops=+document.getElementById('hopRange').value, dist=bfs(id,maxHops);
+  document.querySelectorAll('.node').forEach(g=>{ const nid=g.dataset.id; g.classList.toggle('dim',dist[nid]===undefined); g.classList.toggle('seed',nid===id); });
+  document.querySelectorAll('.edge,.edge-label').forEach(e=>{ const on=dist[e.dataset.s]!==undefined&&dist[e.dataset.t]!==undefined; e.classList.toggle('hl',on); e.classList.toggle('dim',!on); });
+  const n=nodeById[id], reach=Object.keys(dist).filter(x=>x!==id).map(x=>nodeById[x]);
+  document.getElementById('ginfo').innerHTML=`<h3>${n.label}</h3><div class="etype" style="color:${TYPE_COLOR[n.type]}">${n.type}</div>`+
+    Object.entries(n.props).map(([k,v])=>`<div class="row"><b>${k}</b>: ${v}</div>`).join('')+
+    `<div class="reach"><div class="row"><b>Reachable within ${maxHops} hop(s):</b> ${reach.length} entities</div>`+
+    reach.map(r=>`<span class="pill">${r.label}</span>`).join('')+
+    `<div class="row" style="margin-top:10px;color:var(--green)">↳ The cross-domain context an agent receives for a query about "${n.label}".</div></div>`; }
+document.getElementById('hopRange').addEventListener('input',e=>{ document.getElementById('hopLabel').textContent=e.target.value+' hop'+(e.target.value>1?'s':'');
+  const seed=document.querySelector('.node.seed'); if(seed) selectNode(seed.dataset.id); });
+document.getElementById('graphReset').addEventListener('click',()=>{ drawGraph();
+  document.getElementById('ginfo').innerHTML='<h3>Click an entity</h3><p style="font-size:13px;color:var(--muted)">Select a node to traverse the graph.</p>'; });
+const kgLegend=document.getElementById('kgLegend');
+[...new Set(NODES.map(n=>n.type))].forEach(t=>{ const s=document.createElement('span'); s.innerHTML=`<i style="background:${TYPE_COLOR[t]}"></i>${t}`; kgLegend.appendChild(s); });
+drawGraph();
+
+
+/* ===== Memory Tiers ===== */
+const WORK_CAP=4, EP_COMPRESS=6;
+let turn=0, working=[], episodic=[], semantic=[];
+const elW=document.getElementById('memWorking'), elE=document.getElementById('memEpisodic'),
+      elS=document.getElementById('memSemantic'), elP=document.getElementById('memProcedural'), memHint=document.getElementById('memHint');
+elP.innerHTML='<div class="mem-cell">retrieve_policy()</div><div class="mem-cell">summarize()</div><div class="mem-cell">cite_source()</div>';
+function renderMem(){ elW.innerHTML=working.map(t=>`<div class="mem-cell">turn ${t}</div>`).join('');
+  elE.innerHTML=episodic.map(t=>`<div class="mem-cell">turn ${t}</div>`).join('');
+  elS.innerHTML=semantic.map(s=>`<div class="mem-cell summary">${s}</div>`).join(''); }
+function memAdd(){ turn++; working.push(turn); let msg=`Turn ${turn} → Working memory`;
+  if(working.length>WORK_CAP){ const ev=working.shift(); episodic.push(ev); msg=`Working full → demoted turn ${ev} to Episodic`; }
+  if(episodic.length>=EP_COMPRESS){ const from=episodic[0], to=episodic[episodic.length-1];
+    semantic.push(`Summary of turns ${from}–${to}`); episodic=[]; msg=`Episodic hit ${EP_COMPRESS} → compressed into a Semantic summary (originals marked, not deleted)`; }
+  memHint.textContent=msg; renderMem(); }
+document.getElementById('memAdd').addEventListener('click',memAdd);
+document.getElementById('memReset').addEventListener('click',()=>{ turn=0; working=[]; episodic=[]; semantic=[]; renderMem(); memHint.textContent='Working cap = 4 · Episodic compresses at 6'; });
+renderMem();
+</script>
+
+
+</body>
+</html>
+
+
+
+

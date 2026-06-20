@@ -1,0 +1,1225 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NEXUS — Implementation Guide (Detailed Build Spec)</title>
+<style>
+  :root {
+    --bg:#0d1117; --surface:#161b22; --border:#30363d; --primary:#58a6ff;
+    --accent:#f78166; --green:#56d364; --yellow:#e3b341; --purple:#d2a8ff;
+    --orange:#ffa657; --text:#c9d1d9; --muted:#8b949e; --code-bg:#1f2428;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    font-size:15px; line-height:1.7; padding:0 0 80px; }
+  a { color:var(--primary); text-decoration:none; } a:hover { text-decoration:underline; }
+  code,pre { font-family:"JetBrains Mono","Fira Code",Consolas,monospace; }
+
+  .hero { background:linear-gradient(135deg,#0d1117 0%,#161b22 40%,#241a12 100%);
+    border-bottom:1px solid var(--border); padding:56px 48px 44px; max-width:1120px; margin:0 auto; }
+  .hero-tag { display:inline-block; background:rgba(255,166,87,.12); border:1px solid rgba(255,166,87,.3);
+    color:var(--orange); border-radius:20px; padding:3px 14px; font-size:12px; font-weight:600;
+    letter-spacing:.06em; text-transform:uppercase; margin-bottom:18px; }
+  .hero h1 { font-size:36px; font-weight:700; color:#fff; line-height:1.15; margin-bottom:12px; }
+  .hero h1 span { color:var(--orange); }
+  .hero .subtitle { font-size:17px; color:var(--muted); max-width:720px; margin-bottom:26px; }
+  .meta-row { display:flex; gap:30px; flex-wrap:wrap; }
+  .meta-item { display:flex; flex-direction:column; gap:2px; }
+  .meta-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; }
+  .meta-value { font-size:13px; color:var(--text); font-weight:500; }
+
+  .container { max-width:1120px; margin:0 auto; padding:0 48px; }
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+
+  .section { padding:46px 0 0; }
+  .section-title { font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+  h2 { font-size:25px; font-weight:700; color:#e6edf3; margin-bottom:14px; }
+  h3 { font-size:16px; font-weight:600; color:var(--orange); margin:26px 0 10px; }
+  h4 { font-size:13px; font-weight:700; color:var(--primary); margin:16px 0 6px; text-transform:uppercase; letter-spacing:.03em; }
+  p { color:var(--text); margin-bottom:12px; }
+
+  .callout { border-left:3px solid; border-radius:0 8px 8px 0; padding:14px 18px; margin:18px 0; font-size:13.5px; }
+  .callout.info { border-color:var(--primary); background:rgba(88,166,255,.07); }
+  .callout.good { border-color:var(--green);   background:rgba(86,211,100,.07); }
+  .callout.warn { border-color:var(--yellow);  background:rgba(227,179,65,.07); }
+  .callout.build{ border-color:var(--orange);  background:rgba(255,166,87,.08); }
+  .callout strong { color:#e6edf3; }
+
+  pre { background:var(--code-bg); border:1px solid var(--border); border-radius:8px; padding:16px 20px;
+    overflow-x:auto; margin:12px 0; line-height:1.5; color:#e6edf3; font-size:12.5px; }
+  pre .c { color:var(--muted); font-style:italic; } pre .k { color:var(--purple); } pre .s { color:var(--green); }
+  pre .f { color:var(--primary); } pre .d { color:var(--orange); } pre .n { color:var(--yellow); }
+  code { background:rgba(110,118,129,.2); padding:2px 6px; border-radius:4px; font-size:12px; color:#e6edf3; }
+
+  .tbl-wrap { overflow-x:auto; margin:16px 0; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  th { background:rgba(48,54,61,.6); color:var(--muted); font-weight:600; text-transform:uppercase;
+    letter-spacing:.05em; font-size:11px; padding:9px 13px; text-align:left; border-bottom:1px solid var(--border); }
+  td { padding:9px 13px; border-bottom:1px solid rgba(48,54,61,.5); vertical-align:top; }
+  tr:hover td { background:rgba(48,54,61,.25); } td code { font-size:11.5px; }
+
+  .badge { display:inline-block; border-radius:12px; padding:2px 10px; font-size:11px; font-weight:600; letter-spacing:.04em; }
+  .badge.blue{background:rgba(88,166,255,.15);color:var(--primary);}
+  .badge.green{background:rgba(86,211,100,.15);color:var(--green);}
+  .badge.yellow{background:rgba(227,179,65,.15);color:var(--yellow);}
+  .badge.purple{background:rgba(210,168,255,.15);color:var(--purple);}
+  .badge.orange{background:rgba(255,166,87,.15);color:var(--orange);}
+  .badge.red{background:rgba(247,129,102,.15);color:var(--accent);}
+  .badge.gray{background:rgba(139,148,158,.15);color:var(--muted);}
+
+  hr { border:none; border-top:1px solid var(--border); margin:46px 0 0; }
+
+  .toc { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:22px 26px; margin:30px 0; }
+  .toc-title { font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:12px; }
+  .toc ol { padding-left:20px; columns:2; column-gap:40px; }
+  .toc li { margin:5px 0; break-inside:avoid; } .toc a { color:var(--text); font-size:13px; } .toc a:hover { color:var(--primary); }
+
+  .spec { border:1px solid var(--border); border-radius:10px; padding:18px 20px; margin:18px 0; background:rgba(22,27,34,.5); }
+  .spec-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+  .modtag { display:inline-block; font-size:12px; font-weight:700; color:var(--orange); background:rgba(255,166,87,.1);
+    border:1px solid rgba(255,166,87,.25); border-radius:6px; padding:2px 10px; }
+  .spec p { font-size:13px; margin-bottom:8px; }
+  .spec p b { color:#e6edf3; }
+  .acc { border-left:3px solid var(--green); background:rgba(86,211,100,.06); border-radius:0 6px 6px 0;
+    padding:10px 14px; margin:12px 0 2px; font-size:12.5px; }
+  .acc b { color:var(--green); }
+  .io { border-left:3px solid var(--primary); background:rgba(88,166,255,.06); border-radius:0 6px 6px 0;
+    padding:10px 14px; margin:12px 0; font-size:12.5px; }
+  .io b { color:var(--primary); }
+  .filetree { color:#e6edf3; font-size:12px; }
+  .filetree .dir { color:var(--primary); } .filetree .done { color:var(--green); } .filetree .cmt { color:var(--muted); }
+
+  @media (max-width:768px){
+    .hero{padding:36px 24px 32px;} .container{padding:0 24px;} .two-col{grid-template-columns:1fr;}
+    .toc ol{columns:1;} .hero h1{font-size:26px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-tag">Implementation Guide · Detailed Build Spec</div>
+  <h1><span>NEXUS</span> — How the code will be built</h1>
+  <p class="subtitle">
+    A spec precise enough that an implementer (human or model) can build NEXUS without guessing. Every module
+    has exact signatures, a step-by-step algorithm, data shapes, edge cases, a worked example, and an
+    acceptance test. The hard algorithmic modules ship as full reference code. Design rationale lives in the
+    <a href="LLD.html">LLD</a>; this is the <em>build</em>.
+  </p>
+  <div class="meta-row">
+    <div class="meta-item"><span class="meta-label">Document</span><span class="meta-value">Implementation Guide (detailed)</span></div>
+    <div class="meta-item"><span class="meta-label">Author</span><span class="meta-value">Aditya Shrivastava</span></div>
+    <div class="meta-item"><span class="meta-label">Status</span><span class="meta-value">Plan · pre-build</span></div>
+    <div class="meta-item"><span class="meta-label">Design refs</span><span class="meta-value"><a href="HLD.html">HLD</a> · <a href="LLD.html">LLD</a></span></div>
+  </div>
+</div>
+
+<div class="container">
+
+<div class="toc">
+  <div class="toc-title">Contents</div>
+  <ol>
+    <li><a href="#howto">0 · How to use this document</a></li>
+    <li><a href="#conventions">1 · Conventions &amp; coding rules</a></li>
+    <li><a href="#deps">2 · Dependencies &amp; the fallback pattern</a></li>
+    <li><a href="#structure">3 · Repository structure</a></li>
+    <li><a href="#order">4 · Build order &amp; definition of done</a></li>
+    <li><a href="#utils">5 · Global utilities (full code)</a></li>
+    <li><a href="#config">6 · config.py (full code)</a></li>
+    <li><a href="#models">7 · core/models.py (full code)</a></li>
+    <li><a href="#embeddings">8 · Embeddings (full code)</a></li>
+    <li><a href="#storage">9 · Storage layer</a></li>
+    <li><a href="#ingestion">10 · Ingestion</a></li>
+    <li><a href="#retrieval">11 · Retrieval (BM25, RRF, router full code)</a></li>
+    <li><a href="#graph">12 · Graph &amp; entity resolution (full code)</a></li>
+    <li><a href="#memory">13 · Memory tiers</a></li>
+    <li><a href="#governance">14 · Governance (ABAC full code)</a></li>
+    <li><a href="#agent">15 · Agent</a></li>
+    <li><a href="#seed">16 · Seed data (exact)</a></li>
+    <li><a href="#demo">17 · demo.py flow</a></li>
+    <li><a href="#eval">18 · Eval harness (full code)</a></li>
+    <li><a href="#tests">19 · Test suite</a></li>
+    <li><a href="#run">20 · How to run</a></li>
+  </ol>
+</div>
+
+<!-- 0 -->
+<hr /><div class="section" id="howto">
+  <div class="section-title">Section 0</div>
+  <h2>How to use this document</h2>
+  <div class="callout build">
+    <strong>Implementer protocol — follow in order:</strong>
+    <ol style="margin:8px 0 0 18px; font-size:13px">
+      <li>Build files in the <a href="#order">build order</a> (Section 4). Never build a module before its dependencies.</li>
+      <li>For modules marked <span class="badge green">FULL CODE</span>, copy the reference code verbatim (it is correct and tested by design).</li>
+      <li>For modules marked <span class="badge gray">SPEC</span>, implement from the signature + numbered algorithm. Match the signature exactly.</li>
+      <li>After each module, run its <b style="color:var(--green)">Acceptance test</b>. Do not proceed until it passes.</li>
+      <li>At the end of each stage (V0–V5), confirm its <b>Definition of Done</b>.</li>
+    </ol>
+  </div>
+  <p><b>Golden rule:</b> a signature in this doc is a contract. Parameter names, order, types, and return
+  shapes must match exactly, because other modules call them by that contract.</p>
+</div>
+
+<!-- 1 -->
+<hr /><div class="section" id="conventions">
+  <div class="section-title">Section 1</div>
+  <h2>Conventions &amp; coding rules</h2>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Rule</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td>Python version</td><td>3.10+ (uses <code>list[str]</code>, <code>X | None</code> syntax).</td></tr>
+      <tr><td>Typing</td><td>Type-hint every public function param and return. Use the types in this doc exactly.</td></tr>
+      <tr><td>IDs</td><td>All IDs are strings. Generate with <code>uuid.uuid4().hex</code> unless a deterministic ID is specified.</td></tr>
+      <tr><td>Errors</td><td>Define exceptions in <code>nexus/core/errors.py</code>: <code>AccessError</code>, <code>ResolutionError</code>. Never swallow errors silently except the documented import fallbacks.</td></tr>
+      <tr><td>No globals except</td><td><code>SETTINGS</code> (config) — everything else is passed in (dependency injection) for testability.</td></tr>
+      <tr><td>Determinism</td><td>Use the stable hash (Section 5), not Python's built-in <code>hash()</code>, anywhere reproducibility matters.</td></tr>
+      <tr><td>Imports</td><td>Absolute within the package: <code>from nexus.core.models import KnowledgeChunk</code>.</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<!-- 2 -->
+<hr /><div class="section" id="deps">
+  <div class="section-title">Section 2</div>
+  <h2>Dependencies &amp; the fallback pattern</h2>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Concern</th><th>Library</th><th>Required?</th><th>Fallback</th></tr></thead>
+    <tbody>
+      <tr><td>Models</td><td><code>pydantic&gt;=2</code></td><td><span class="badge green">core</span></td><td>—</td></tr>
+      <tr><td>Embeddings</td><td><code>sentence-transformers</code></td><td><span class="badge gray">optional</span></td><td>HashingEmbedder (stdlib)</td></tr>
+      <tr><td>Vector store</td><td><code>chromadb</code></td><td><span class="badge gray">optional</span></td><td>InMemoryVectorStore (stdlib)</td></tr>
+      <tr><td>Graph</td><td><code>networkx</code></td><td><span class="badge gray">optional</span></td><td>built-in adjacency dict</td></tr>
+      <tr><td>Metadata/episodic</td><td><code>sqlite3</code> (stdlib)</td><td><span class="badge green">core</span></td><td>—</td></tr>
+      <tr><td>LLM</td><td><code>anthropic</code></td><td><span class="badge gray">optional</span></td><td>extractive synthesiser (stdlib)</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>The fallback pattern</b> — every optional dep is isolated in a factory function. Callers depend only on the abstract type:</p>
+  <pre><span class="k">def</span> <span class="f">get_embedder</span>() -&gt; Embedder:
+    <span class="k">try</span>:
+        <span class="k">from</span> sentence_transformers <span class="k">import</span> SentenceTransformer
+        <span class="k">return</span> LocalEmbedder(SentenceTransformer(<span class="s">"all-MiniLM-L6-v2"</span>))
+    <span class="k">except</span> Exception:
+        <span class="k">return</span> HashingEmbedder()   <span class="c"># demo still runs, clearly degraded</span></pre>
+</div>
+
+<!-- 3 -->
+<hr /><div class="section" id="structure">
+  <div class="section-title">Section 3</div>
+  <h2>Repository structure</h2>
+  <pre class="filetree">nexus_platform/
+├── demo.py
+├── requirements.txt
+├── <span class="dir">nexus/</span>
+│   ├── __init__.py
+│   ├── <span class="dir">core/</span>      models.py <span class="done">(drafted)</span> · config.py · errors.py · utils.py
+│   ├── <span class="dir">embeddings/</span>   embedder.py
+│   ├── <span class="dir">storage/</span>   vector_store.py · metadata_store.py · audit.py
+│   ├── <span class="dir">ingestion/</span>   chunker.py · pii.py · pipeline.py
+│   ├── <span class="dir">retrieval/</span>   sparse.py · dense.py · graph_rag.py · fusion.py · anti_rag.py · retriever.py
+│   ├── <span class="dir">graph/</span>   knowledge_graph.py · entity_resolution.py · ontology.py
+│   ├── <span class="dir">memory/</span>   working.py · episodic.py · semantic.py · procedural.py · manager.py
+│   ├── <span class="dir">governance/</span>   access.py · provenance.py
+│   ├── <span class="dir">agents/</span>   base.py
+│   ├── <span class="dir">eval/</span>   metrics.py · golden.py
+│   └── seed_data.py
+└── <span class="dir">tests/</span>   test_retrieval.py · test_governance.py · test_memory.py</pre>
+</div>
+
+<!-- 4 -->
+<hr /><div class="section" id="order">
+  <div class="section-title">Section 4</div>
+  <h2>Build order &amp; definition of done</h2>
+  <p>Build top-to-bottom. Each row depends only on rows above it.</p>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Stage</th><th>Files (in order)</th><th>Definition of done</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge blue">V0</span></td>
+        <td><code>core/utils</code> → <code>core/config</code> → <code>core/errors</code> → <code>core/models</code> → <code>retrieval/sparse</code> → <code>retrieval/retriever</code> (sparse-only) → <code>agents/base</code> → <code>seed_data</code> → <code>demo</code></td>
+        <td><code>python demo.py</code> ingests seed chunks, answers a query using BM25, prints grounded results.</td></tr>
+      <tr><td><span class="badge green">V1</span></td>
+        <td><code>embeddings/embedder</code> → <code>storage/vector_store</code> → <code>retrieval/dense</code> → <code>retrieval/fusion</code> → upgrade <code>retriever</code></td>
+        <td>Retriever fuses BM25 + dense via RRF; demo shows per-result strategy.</td></tr>
+      <tr><td><span class="badge purple">V2</span></td>
+        <td><code>graph/ontology</code> → <code>graph/knowledge_graph</code> → <code>graph/entity_resolution</code> → <code>retrieval/graph_rag</code> → upgrade <code>retriever</code></td>
+        <td>A multi-entity query returns chunks reached via graph traversal.</td></tr>
+      <tr><td><span class="badge red">V3</span></td>
+        <td><code>governance/access</code> → <code>governance/provenance</code> → <code>storage/metadata_store</code> → <code>storage/audit</code> → wire into <code>retriever</code></td>
+        <td>Two agents with different claims get different results for the same query; audit log records both.</td></tr>
+      <tr><td><span class="badge yellow">V4</span></td>
+        <td><code>memory/working</code> → <code>episodic</code> → <code>semantic</code> → <code>procedural</code> → <code>manager</code> → <code>retrieval/anti_rag</code> → wire into <code>agents/base</code></td>
+        <td>Working memory evicts to episodic; episodic compresses to semantic; router skips retrieval for DIRECT queries.</td></tr>
+      <tr><td><span class="badge orange">V5</span></td>
+        <td><code>ingestion/*</code> → <code>eval/metrics</code> → <code>eval/golden</code> → <code>tests/*</code></td>
+        <td>Eval harness reports recall@k on the golden set; all unit tests pass.</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<!-- 5 -->
+<hr /><div class="section" id="utils">
+  <div class="section-title">Section 5</div>
+  <h2>Global utilities — <span class="badge green">FULL CODE</span></h2>
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/core/utils.py</span><span class="badge green">FULL CODE</span></div>
+    <p><b>Purpose.</b> Pure helpers used everywhere: tokenisation, vector math, a deterministic hash, and edit distance. No external deps.</p>
+<pre><span class="k">from</span> __future__ <span class="k">import</span> annotations
+<span class="k">import</span> hashlib, math, re
+
+
+<span class="k">def</span> <span class="f">tokenize</span>(text: str) -&gt; list[str]:
+    <span class="s">"""Lowercase alphanumeric word tokens. The single text-splitting primitive."""</span>
+    <span class="k">return</span> re.findall(<span class="s">r"[a-z0-9]+"</span>, text.lower())
+
+
+<span class="k">def</span> <span class="f">stable_hash</span>(token: str) -&gt; int:
+    <span class="s">"""Deterministic across processes (unlike built-in hash())."""</span>
+    <span class="k">return</span> int(hashlib.md5(token.encode(<span class="s">"utf-8"</span>)).hexdigest(), 16)
+
+
+<span class="k">def</span> <span class="f">l2_normalize</span>(v: list[float]) -&gt; list[float]:
+    norm = math.sqrt(sum(x * x <span class="k">for</span> x <span class="k">in</span> v))
+    <span class="k">return</span> [x / norm <span class="k">for</span> x <span class="k">in</span> v] <span class="k">if</span> norm &gt; 0 <span class="k">else</span> v
+
+
+<span class="k">def</span> <span class="f">cosine</span>(a: list[float], b: list[float]) -&gt; float:
+    <span class="k">if</span> <span class="k">not</span> a <span class="k">or</span> <span class="k">not</span> b: <span class="k">return</span> 0.0
+    dot = sum(x * y <span class="k">for</span> x, y <span class="k">in</span> zip(a, b))
+    na = math.sqrt(sum(x * x <span class="k">for</span> x <span class="k">in</span> a))
+    nb = math.sqrt(sum(y * y <span class="k">for</span> y <span class="k">in</span> b))
+    <span class="k">return</span> dot / (na * nb) <span class="k">if</span> na <span class="k">and</span> nb <span class="k">else</span> 0.0
+
+
+<span class="k">def</span> <span class="f">levenshtein</span>(a: str, b: str) -&gt; int:
+    <span class="s">"""Edit distance via DP. O(len(a)*len(b))."""</span>
+    <span class="k">if</span> a == b: <span class="k">return</span> 0
+    <span class="k">if</span> <span class="k">not</span> a: <span class="k">return</span> len(b)
+    <span class="k">if</span> <span class="k">not</span> b: <span class="k">return</span> len(a)
+    prev = list(range(len(b) + 1))
+    <span class="k">for</span> i, ca <span class="k">in</span> enumerate(a, 1):
+        cur = [i]
+        <span class="k">for</span> j, cb <span class="k">in</span> enumerate(b, 1):
+            cost = 0 <span class="k">if</span> ca == cb <span class="k">else</span> 1
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost))
+        prev = cur
+    <span class="k">return</span> prev[-1]
+
+
+<span class="k">def</span> <span class="f">extract_entities</span>(text: str, known_names: set[str]) -&gt; list[str]:
+    <span class="s">"""The known entity names/aliases that appear in `text` (word-boundary match)."""</span>
+    low = text.lower()
+    found = []
+    <span class="k">for</span> name <span class="k">in</span> known_names:
+        <span class="k">if</span> re.search(<span class="s">r"\b"</span> + re.escape(name.lower()) + <span class="s">r"\b"</span>, low):
+            found.append(name)
+    <span class="k">return</span> found</pre>
+    <div class="acc"><b>Acceptance test.</b> <code>tokenize("Hello, NJ-2026!") == ["hello","nj","2026"]</code> · <code>cosine([1,0],[1,0])==1.0</code> · <code>cosine([1,0],[0,1])==0.0</code> · <code>levenshtein("mahomes","mahome")==1</code> · <code>stable_hash("x")==stable_hash("x")</code> (equal across runs) · <code>extract_entities("odds in NJ", {"NJ"})==["NJ"]</code>.</div>
+  </div>
+</div>
+
+<!-- 6 -->
+<hr /><div class="section" id="config">
+  <div class="section-title">Section 6</div>
+  <h2>config.py — <span class="badge green">FULL CODE</span></h2>
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/core/config.py</span><span class="badge green">FULL CODE</span></div>
+<pre><span class="k">from</span> dataclasses <span class="k">import</span> dataclass
+
+<span class="d">@dataclass</span>
+<span class="k">class</span> <span class="f">Settings</span>:
+    working_capacity: int = 10           <span class="c"># turns kept in working memory</span>
+    episodic_compress_at: int = 20       <span class="c"># compress after N uncompressed traces</span>
+    context_token_budget: int = 8192
+    rrf_k: int = 60                      <span class="c"># RRF constant</span>
+    default_top_k: int = 10
+    short_query_tokens: int = 8          <span class="c"># below this, consider HyDE</span>
+    max_hops: int = 3                    <span class="c"># graph BFS depth cap</span>
+    degree_cap: int = 8                  <span class="c"># top-N edges expanded per node</span>
+    min_resolution_confidence: float = 0.70
+    embedding_sim_threshold: float = 0.92
+    near_dup_threshold: float = 0.97
+    fail_closed: bool = True
+
+SETTINGS = Settings()                    <span class="c"># import-time singleton; tests may replace fields</span></pre>
+  </div>
+</div>
+
+<!-- 7 -->
+<hr /><div class="section" id="models">
+  <div class="section-title">Section 7</div>
+  <h2>core/models.py — <span class="badge green">FULL CODE</span></h2>
+  <p>The data contracts every other module depends on. Enums are string-valued so they serialise cleanly to SQLite/JSON.</p>
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/core/models.py</span><span class="badge green">FULL CODE</span></div>
+<pre><span class="k">from</span> __future__ <span class="k">import</span> annotations
+<span class="k">from</span> datetime <span class="k">import</span> datetime, timezone
+<span class="k">from</span> enum <span class="k">import</span> Enum
+<span class="k">import</span> hashlib, uuid
+<span class="k">from</span> pydantic <span class="k">import</span> BaseModel, Field
+
+
+<span class="k">def</span> <span class="f">_uid</span>() -&gt; str: <span class="k">return</span> uuid.uuid4().hex
+<span class="k">def</span> <span class="f">_now</span>() -&gt; datetime: <span class="k">return</span> datetime.now(timezone.utc)
+
+
+<span class="k">class</span> <span class="f">SensitivityLevel</span>(str, Enum):
+    PUBLIC = <span class="s">"PUBLIC"</span>; INTERNAL = <span class="s">"INTERNAL"</span>
+    CONFIDENTIAL = <span class="s">"CONFIDENTIAL"</span>; RESTRICTED = <span class="s">"RESTRICTED"</span>
+
+<span class="k">class</span> <span class="f">DataDomain</span>(str, Enum):
+    CUSTOMER=<span class="s">"CUSTOMER"</span>; PRODUCT=<span class="s">"PRODUCT"</span>; MARKETING=<span class="s">"MARKETING"</span>; ENGINEERING=<span class="s">"ENGINEERING"</span>
+    OPERATIONS=<span class="s">"OPERATIONS"</span>; COMPLIANCE=<span class="s">"COMPLIANCE"</span>; SPORTS=<span class="s">"SPORTS"</span>; FINANCE=<span class="s">"FINANCE"</span>
+
+<span class="k">class</span> <span class="f">RetrievalStrategy</span>(str, Enum):
+    DENSE=<span class="s">"DENSE"</span>; SPARSE=<span class="s">"SPARSE"</span>; HYBRID=<span class="s">"HYBRID"</span>; GRAPH=<span class="s">"GRAPH"</span>
+    DIRECT=<span class="s">"DIRECT"</span>; STRUCTURED=<span class="s">"STRUCTURED"</span>; CACHED=<span class="s">"CACHED"</span>
+
+<span class="k">class</span> <span class="f">EntityType</span>(str, Enum):
+    PLAYER=<span class="s">"PLAYER"</span>; TEAM=<span class="s">"TEAM"</span>; LEAGUE=<span class="s">"LEAGUE"</span>; EVENT=<span class="s">"EVENT"</span>; MARKET=<span class="s">"MARKET"</span>
+    PRODUCT=<span class="s">"PRODUCT"</span>; CUSTOMER=<span class="s">"CUSTOMER"</span>; POLICY=<span class="s">"POLICY"</span>; REGULATION=<span class="s">"REGULATION"</span>
+    JURISDICTION=<span class="s">"JURISDICTION"</span>; CHUNK=<span class="s">"CHUNK"</span>
+
+
+<span class="k">class</span> <span class="f">KnowledgeChunk</span>(BaseModel):
+    id: str = Field(default_factory=_uid)
+    content: str
+    domain: DataDomain
+    sensitivity: SensitivityLevel = SensitivityLevel.INTERNAL
+    source_uri: str = <span class="s">""</span>
+    collection: str = <span class="s">"default"</span>
+    embedding: list[float] | None = None
+    entity_refs: list[str] = Field(default_factory=list)
+    metadata: dict = Field(default_factory=dict)
+    provenance_id: str | None = None
+    checksum: str = <span class="s">""</span>
+    token_count: int = 0
+
+    <span class="k">def</span> <span class="f">finalize</span>(self) -&gt; <span class="s">"KnowledgeChunk"</span>:
+        <span class="s">"""Compute checksum + token_count. Call once after content is set."""</span>
+        self.checksum = hashlib.sha256(self.content.encode(<span class="s">"utf-8"</span>)).hexdigest()
+        self.token_count = len(self.content.split())
+        <span class="k">return</span> self
+
+
+<span class="k">class</span> <span class="f">Entity</span>(BaseModel):
+    id: str = Field(default_factory=_uid)
+    name: str
+    entity_type: EntityType
+    canonical_name: str
+    aliases: list[str] = Field(default_factory=list)
+    domain: DataDomain | None = None
+    properties: dict = Field(default_factory=dict)
+    confidence: float = 1.0
+    source_chunks: list[str] = Field(default_factory=list)
+    embedding: list[float] | None = None
+
+
+<span class="k">class</span> <span class="f">Relationship</span>(BaseModel):
+    id: str = Field(default_factory=_uid)
+    source_entity_id: str
+    target_entity_id: str
+    relation_type: str
+    weight: float = 1.0
+    properties: dict = Field(default_factory=dict)
+    valid_from: datetime | None = None
+    valid_until: datetime | None = None
+
+
+<span class="k">class</span> <span class="f">MemoryTrace</span>(BaseModel):
+    id: str = Field(default_factory=_uid)
+    agent_id: str
+    session_id: str
+    turn_index: int
+    role: str                              <span class="c"># "user" | "assistant"</span>
+    content: str
+    retrieved_chunks: list[str] = Field(default_factory=list)
+    timestamp: datetime = Field(default_factory=_now)
+    compressed_into: str | None = None
+
+
+<span class="k">class</span> <span class="f">AccessClaim</span>(BaseModel):
+    principal_id: str
+    principal_type: str = <span class="s">"agent"</span>
+    domains: list[DataDomain] = Field(default_factory=list)
+    max_sensitivity: SensitivityLevel = SensitivityLevel.INTERNAL
+    collections: list[str] = Field(default_factory=list)   <span class="c"># empty = all</span>
+    attributes: dict = Field(default_factory=dict)          <span class="c"># e.g. {"jurisdiction":"NJ"}</span>
+
+
+<span class="k">class</span> <span class="f">RetrievalRequest</span>(BaseModel):
+    query: str
+    agent_id: str = <span class="s">""</span>
+    session_id: str = <span class="s">""</span>
+    collections: list[str] | None = None
+    top_k: int = 10
+    include_graph: bool = True
+
+
+<span class="k">class</span> <span class="f">RetrievalResult</span>(BaseModel):
+    chunk: KnowledgeChunk
+    score: float
+    strategy: RetrievalStrategy
+    explanation: str = <span class="s">""</span>
+    hop_path: list[str] | None = None
+
+
+<span class="k">class</span> <span class="f">ProvenanceRecord</span>(BaseModel):
+    id: str = Field(default_factory=_uid)
+    entity_id: str
+    activity: str
+    agent: str
+    used: list[str] = Field(default_factory=list)
+    generated: list[str] = Field(default_factory=list)
+    timestamp: datetime = Field(default_factory=_now)
+
+
+<span class="k">class</span> <span class="f">AgentContext</span>(BaseModel):
+    agent_id: str
+    session_id: str
+    working_memory: list[MemoryTrace] = Field(default_factory=list)
+    retrieved_knowledge: list[RetrievalResult] = Field(default_factory=list)
+    active_entities: list[str] = Field(default_factory=list)
+    retrieval_strategy_used: RetrievalStrategy | None = None
+
+    <span class="k">def</span> <span class="f">context_string</span>(self) -&gt; str:
+        <span class="s">"""Flatten into the text block handed to the LLM."""</span>
+        parts = []
+        <span class="k">for</span> t <span class="k">in</span> self.working_memory[-5:]:
+            parts.append(f<span class="s">"{t.role}: {t.content}"</span>)
+        <span class="k">for</span> r <span class="k">in</span> self.retrieved_knowledge:
+            parts.append(f<span class="s">"[{r.chunk.domain.value}] {r.chunk.content}"</span>)
+        <span class="k">return</span> <span class="s">"\n"</span>.join(parts)</pre>
+    <div class="acc"><b>Acceptance test.</b> <code>KnowledgeChunk(content="x", domain=DataDomain.SPORTS).finalize().checksum</code> is a 64-char hex string; re-creating with the same content yields the same checksum.</div>
+  </div>
+</div>
+
+<!-- 8 -->
+<hr /><div class="section" id="embeddings">
+  <div class="section-title">Section 8</div>
+  <h2>Embeddings — <span class="badge green">FULL CODE</span></h2>
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/embeddings/embedder.py</span><span class="badge green">FULL CODE</span></div>
+<pre><span class="k">from</span> abc <span class="k">import</span> ABC, abstractmethod
+<span class="k">from</span> nexus.core.utils <span class="k">import</span> tokenize, stable_hash, l2_normalize
+
+
+<span class="k">class</span> <span class="f">Embedder</span>(ABC):
+    <span class="d">@abstractmethod</span>
+    <span class="k">def</span> <span class="f">encode</span>(self, text: str) -&gt; list[float]: ...
+    <span class="k">def</span> <span class="f">encode_many</span>(self, texts: list[str]) -&gt; list[list[float]]:
+        <span class="k">return</span> [self.encode(t) <span class="k">for</span> t <span class="k">in</span> texts]
+    <span class="d">@property</span>
+    <span class="d">@abstractmethod</span>
+    <span class="k">def</span> <span class="f">model_id</span>(self) -&gt; str: ...
+
+
+<span class="k">class</span> <span class="f">HashingEmbedder</span>(Embedder):
+    <span class="s">"""Stdlib fallback: hashed bag-of-words → fixed-dim L2-normalised vector."""</span>
+    <span class="k">def</span> <span class="f">__init__</span>(self, dim: int = 256): self.dim = dim
+    <span class="k">def</span> <span class="f">encode</span>(self, text: str) -&gt; list[float]:
+        v = [0.0] * self.dim
+        <span class="k">for</span> tok <span class="k">in</span> tokenize(text):
+            v[stable_hash(tok) % self.dim] += 1.0
+        <span class="k">return</span> l2_normalize(v)
+    <span class="d">@property</span>
+    <span class="k">def</span> <span class="f">model_id</span>(self) -&gt; str: <span class="k">return</span> f<span class="s">"hashing-{self.dim}"</span>
+
+
+<span class="k">class</span> <span class="f">LocalEmbedder</span>(Embedder):
+    <span class="k">def</span> <span class="f">__init__</span>(self, model): self.model = model
+    <span class="k">def</span> <span class="f">encode</span>(self, text: str) -&gt; list[float]:
+        <span class="k">return</span> l2_normalize(list(self.model.encode(text)))
+    <span class="d">@property</span>
+    <span class="k">def</span> <span class="f">model_id</span>(self) -&gt; str: <span class="k">return</span> <span class="s">"all-MiniLM-L6-v2"</span>
+
+
+<span class="k">def</span> <span class="f">get_embedder</span>() -&gt; Embedder:
+    <span class="k">try</span>:
+        <span class="k">from</span> sentence_transformers <span class="k">import</span> SentenceTransformer
+        <span class="k">return</span> LocalEmbedder(SentenceTransformer(<span class="s">"all-MiniLM-L6-v2"</span>))
+    <span class="k">except</span> Exception:
+        <span class="k">return</span> HashingEmbedder()</pre>
+    <div class="acc"><b>Acceptance test.</b> <code>e=HashingEmbedder(); len(e.encode("a b c"))==256</code>; <code>cosine(e.encode("new jersey odds"), e.encode("new jersey odds"))==1.0</code>; an unrelated string scores lower.</div>
+  </div>
+</div>
+
+<!-- 9 -->
+<hr /><div class="section" id="storage">
+  <div class="section-title">Section 9</div>
+  <h2>Storage layer</h2>
+
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/storage/vector_store.py</span><span class="badge green">FULL CODE</span></div>
+<pre><span class="k">from</span> abc <span class="k">import</span> ABC, abstractmethod
+<span class="k">from</span> nexus.core.utils <span class="k">import</span> cosine
+
+
+<span class="k">class</span> <span class="f">VectorStore</span>(ABC):
+    <span class="d">@abstractmethod</span>
+    <span class="k">def</span> <span class="f">upsert</span>(self, chunk_id: str, vector: list[float], collection: str) -&gt; None: ...
+    <span class="d">@abstractmethod</span>
+    <span class="k">def</span> <span class="f">search</span>(self, vector: list[float], collection: str | None,
+               top_k: int) -&gt; list[tuple[str, float]]: ...
+
+
+<span class="k">class</span> <span class="f">InMemoryVectorStore</span>(VectorStore):
+    <span class="s">"""Brute-force cosine. O(n) per query — fine at demo scale."""</span>
+    <span class="k">def</span> <span class="f">__init__</span>(self):
+        self.data: dict[str, dict[str, list[float]]] = {}   <span class="c"># collection -&gt; {id: vec}</span>
+
+    <span class="k">def</span> <span class="f">upsert</span>(self, chunk_id, vector, collection):
+        self.data.setdefault(collection, {})[chunk_id] = vector
+
+    <span class="k">def</span> <span class="f">search</span>(self, vector, collection, top_k=10):
+        <span class="k">if</span> collection <span class="k">is</span> None:                       <span class="c"># search across all collections</span>
+            items = {cid: v <span class="k">for</span> col <span class="k">in</span> self.data.values() <span class="k">for</span> cid, v <span class="k">in</span> col.items()}
+        <span class="k">else</span>:
+            items = self.data.get(collection, {})
+        scored = [(cid, cosine(vector, v)) <span class="k">for</span> cid, v <span class="k">in</span> items.items()]
+        scored.sort(key=<span class="k">lambda</span> kv: kv[1], reverse=True)
+        <span class="k">return</span> scored[:top_k]</pre>
+    <div class="acc"><b>Acceptance test.</b> upsert 3 vectors, search with one of them → that id ranks #1 with score ≈ 1.0.</div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/storage/metadata_store.py</span><span class="badge gray">SPEC</span></div>
+    <p><b>Purpose.</b> SQLite system of record for chunks + episodic traces (LLD §3). Backend: <code>sqlite3</code>, WAL mode.</p>
+    <p><b>Signatures (match exactly):</b></p>
+<pre><span class="k">class</span> <span class="f">MetadataStore</span>:
+    <span class="k">def</span> <span class="f">__init__</span>(self, path: str = <span class="s">":memory:"</span>) -&gt; None
+    <span class="k">def</span> <span class="f">insert_chunk</span>(self, chunk: KnowledgeChunk) -&gt; bool      <span class="c"># False if checksum dup</span>
+    <span class="k">def</span> <span class="f">get_chunks</span>(self, ids: list[str]) -&gt; list[KnowledgeChunk]
+    <span class="k">def</span> <span class="f">all_chunks</span>(self) -&gt; list[KnowledgeChunk]              <span class="c"># for BM25 population in demo</span>
+    <span class="k">def</span> <span class="f">save_trace</span>(self, trace: MemoryTrace) -&gt; None
+    <span class="k">def</span> <span class="f">load_traces</span>(self, agent_id: str, only_uncompressed: bool = False) -&gt; list[MemoryTrace]
+    <span class="k">def</span> <span class="f">mark_compressed</span>(self, trace_ids: list[str], summary_chunk_id: str) -&gt; None</pre>
+    <p><b>Algorithm — <code>insert_chunk</code>:</b> 1) ensure <code>chunk.finalize()</code> was called; 2) reject if <code>chunk.checksum</code> is already present; 3) return whether it was inserted.</p>
+    <p><b>Prototype shortcut (recommended).</b> Back this with an in-memory <code>dict[str, KnowledgeChunk]</code> keyed by id + a <code>set</code> of checksums for dedup — no serialisation, no SQL. (The SQLite schema in <a href="LLD.html#persistence">LLD §3</a> is the production shape.) <b>Either way, <code>get_chunks</code> must return chunks with every governance field intact</b> — <code>domain</code>, <code>sensitivity</code>, <code>collection</code>, <code>metadata</code> — because <code>permits()</code> reads them after hydration. For the SQLite path: persist enums by <code>.value</code>; store <code>embedding</code>/<code>metadata</code>/<code>entity_refs</code> as JSON; rebuild via <code>KnowledgeChunk(**parsed_row)</code>.</p>
+    <p><b>Edge cases.</b> <code>get_chunks([])</code> returns <code>[]</code>; unknown ids are skipped, never raised.</p>
+    <div class="acc"><b>Acceptance test.</b> Inserting the same chunk twice → second call returns <code>False</code> and the table has one row.</div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/storage/audit.py</span><span class="badge gray">SPEC</span></div>
+    <p><b>Purpose.</b> Append-only log of every retrieval decision. Never updates or deletes.</p>
+<pre><span class="k">class</span> <span class="f">AuditLog</span>:
+    <span class="k">def</span> <span class="f">__init__</span>(self) -&gt; None: self.entries: list[dict] = []
+    <span class="k">def</span> <span class="f">record</span>(self, principal_id: str, query: str, strategy: str,
+               returned_ids: list[str], excluded_count: int) -&gt; None
+    <span class="k">def</span> <span class="f">dump</span>(self) -&gt; list[dict]</pre>
+    <p><b>Algorithm.</b> <code>record</code> appends <code>{seq, ts, principal_id, query_hash, strategy, returned_ids, excluded_count}</code> where <code>query_hash = sha256(query)[:12]</code> (never store raw query text).</p>
+    <div class="acc"><b>Acceptance test.</b> Two <code>record()</code> calls → <code>dump()</code> has 2 entries with increasing <code>seq</code>; raw query text appears nowhere.</div>
+  </div>
+</div>
+
+<!-- 10 -->
+<hr /><div class="section" id="ingestion">
+  <div class="section-title">Section 10</div>
+  <h2>Ingestion</h2>
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/ingestion/chunker.py</span><span class="badge gray">SPEC</span></div>
+    <p><b>Signature.</b> <code>def chunk_text(text: str, target_tokens: int = 512, overlap: float = 0.2) -&gt; list[str]</code></p>
+    <p><b>Algorithm (RECURSIVE default):</b> 1) split <code>text</code> into paragraphs on blank lines; 2) accumulate paragraphs until adding the next would exceed <code>target_tokens</code> (count by <code>.split()</code>); 3) emit the accumulated chunk; 4) start the next chunk with the last <code>overlap*target_tokens</code> tokens of the previous (sliding overlap); 5) never split mid-word.</p>
+    <p><b>Edge cases.</b> Empty text → <code>[]</code>. A single paragraph longer than target → hard-split on word boundary.</p>
+    <div class="acc"><b>Acceptance test.</b> A 1200-word doc with <code>target_tokens=512</code> → 3 chunks; consecutive chunks share ≈100 overlapping tokens.</div>
+  </div>
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/ingestion/pii.py</span><span class="badge gray">SPEC</span></div>
+    <p><b>Signature.</b> <code>def scan(text: str) -&gt; bool</code> — returns <code>True</code> if PII is detected.</p>
+    <p><b>Algorithm.</b> Regex match for email, US SSN (<code>\d{3}-\d{2}-\d{4}</code>), phone, and credit-card-like 16-digit runs. Any match → <code>True</code>. (Production: add a model-based pass.)</p>
+    <p><b>Caller behaviour.</b> If <code>scan()</code> is <code>True</code>, the pipeline sets <code>chunk.sensitivity = RESTRICTED</code>.</p>
+    <div class="acc"><b>Acceptance test.</b> <code>scan("contact a@b.com")==True</code>; <code>scan("Mahomes is a QB")==False</code>.</div>
+  </div>
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/ingestion/pipeline.py</span><span class="badge gray">SPEC</span></div>
+    <p><b>Signature.</b> <code>def ingest(text, domain, collection, embedder, vstore, mstore, kg, prov, known_names, *, sensitivity=INTERNAL, source_uri="") -&gt; list[KnowledgeChunk]</code></p>
+    <p><b>Algorithm (numbered):</b></p>
+<pre>1. for piece in chunk_text(text):
+   a. c = KnowledgeChunk(content=piece, domain=domain, collection=collection,
+                         sensitivity=sensitivity, source_uri=source_uri).finalize()
+   b. if pii.scan(piece): c.sensitivity = RESTRICTED
+   c. rec = prov.record(entity_id=c.id, activity="ingest", agent="pipeline",
+                        used=[source_uri] if source_uri else [], generated=[c.id])
+      c.provenance_id = rec.id                       # provenance on EVERY chunk
+   d. if not mstore.insert_chunk(c): continue        # dedup: skip exact duplicates
+   e. c.embedding = embedder.encode(piece)
+      vstore.upsert(c.id, c.embedding, collection)
+   f. for name in extract_entities(piece, known_names):   # from core/utils (Section 5)
+          ent, _conf = resolve(name, kg, embedder)
+          ent.source_chunks.append(c.id); c.entity_refs.append(ent.id)
+2. return the list of stored chunks</pre>
+    <p><b>Note.</b> <code>extract_entities</code> is the word-boundary matcher in <code>core/utils</code> (Section 5); <code>known_names</code> is built once from every entity's canonical name + aliases. The graph is seeded explicitly (Section 16).</p>
+    <div class="acc"><b>Acceptance test.</b> Ingesting one seed paragraph stores ≥1 chunk, gives it an embedding, and re-ingesting the identical text stores 0 new chunks.</div>
+  </div>
+</div>
+
+<!-- 11 -->
+<hr /><div class="section" id="retrieval">
+  <div class="section-title">Section 11</div>
+  <h2>Retrieval</h2>
+
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/retrieval/sparse.py</span><span class="badge green">FULL CODE</span></div>
+<pre><span class="k">import</span> math
+<span class="k">from</span> collections <span class="k">import</span> Counter, defaultdict
+<span class="k">from</span> nexus.core.utils <span class="k">import</span> tokenize
+
+
+<span class="k">class</span> <span class="f">BM25Index</span>:
+    <span class="k">def</span> <span class="f">__init__</span>(self, k1: float = 1.5, b: float = 0.75):
+        self.k1, self.b = k1, b
+        self.docs: dict[str, Counter] = {}      <span class="c"># chunk_id -&gt; term freqs</span>
+        self.doc_len: dict[str, int] = {}
+        self.df: Counter = Counter()            <span class="c"># term -&gt; #docs containing it</span>
+        self.N = 0
+        self.avgdl = 0.0
+
+    <span class="k">def</span> <span class="f">add</span>(self, chunk_id: str, text: str) -&gt; None:
+        toks = tokenize(text)
+        tf = Counter(toks)
+        self.docs[chunk_id] = tf
+        self.doc_len[chunk_id] = len(toks)
+        <span class="k">for</span> term <span class="k">in</span> tf:
+            self.df[term] += 1
+        self.N = len(self.docs)
+        self.avgdl = sum(self.doc_len.values()) / self.N <span class="k">if</span> self.N <span class="k">else</span> 0.0
+
+    <span class="k">def</span> <span class="f">_idf</span>(self, term: str) -&gt; float:
+        n = self.df.get(term, 0)
+        <span class="k">return</span> math.log((self.N - n + 0.5) / (n + 0.5) + 1.0)
+
+    <span class="k">def</span> <span class="f">search</span>(self, query: str, top_k: int = 10) -&gt; list[tuple[str, float]]:
+        scores: dict[str, float] = defaultdict(float)
+        <span class="k">for</span> term <span class="k">in</span> tokenize(query):
+            <span class="k">if</span> term <span class="k">not in</span> self.df:
+                <span class="k">continue</span>
+            idf = self._idf(term)
+            <span class="k">for</span> cid, tf <span class="k">in</span> self.docs.items():
+                f = tf.get(term, 0)
+                <span class="k">if</span> f == 0:
+                    <span class="k">continue</span>
+                denom = f + self.k1 * (1 - self.b + self.b * self.doc_len[cid] / self.avgdl)
+                scores[cid] += idf * (f * (self.k1 + 1)) / denom
+        ranked = sorted(scores.items(), key=<span class="k">lambda</span> kv: kv[1], reverse=True)
+        <span class="k">return</span> ranked[:top_k]</pre>
+    <div class="acc"><b>Acceptance test.</b> Add 3 docs; querying a term unique to doc B ranks B first. Querying a term absent from all → <code>[]</code>.</div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/retrieval/fusion.py</span><span class="badge green">FULL CODE</span></div>
+<pre><span class="k">from</span> collections <span class="k">import</span> defaultdict
+
+
+<span class="k">def</span> <span class="f">rrf</span>(ranked_lists: list[list[str]], k: int = 60) -&gt; list[tuple[str, float]]:
+    <span class="s">"""Reciprocal Rank Fusion. Input: each list is chunk_ids best-first."""</span>
+    scores: dict[str, float] = defaultdict(float)
+    <span class="k">for</span> lst <span class="k">in</span> ranked_lists:
+        <span class="k">for</span> rank, cid <span class="k">in</span> enumerate(lst):
+            scores[cid] += 1.0 / (k + rank)
+    <span class="k">return</span> sorted(scores.items(), key=<span class="k">lambda</span> kv: kv[1], reverse=True)</pre>
+    <div class="io"><b>Worked example.</b> <code>rrf([["a","b"],["b","a"]], k=60)</code> → both get <code>1/60 + 1/61</code>; tie broken by insertion order → <code>[("a",0.0331…),("b",0.0331…)]</code>. A chunk ranked #1 in all three lists wins.</div>
+    <div class="acc"><b>Acceptance test.</b> <code>rrf([["x","y"],["x","z"]])[0][0]=="x"</code> (x appears at rank 0 twice, highest score).</div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/retrieval/anti_rag.py</span><span class="badge green">FULL CODE</span></div>
+<pre><span class="k">import</span> re
+<span class="k">from</span> nexus.core.models <span class="k">import</span> RetrievalStrategy <span class="k">as</span> RS
+
+_LIVE = re.compile(<span class="s">r"\b(live|right now|current|currently|today|balance|odds now)\b"</span>, re.I)
+_GENERAL = re.compile(<span class="s">r"\b(what is|define|explain|how do|formula for)\b"</span>, re.I)
+
+
+<span class="k">def</span> <span class="f">_entity_count</span>(query: str, known_names: set[str]) -&gt; int:
+    q = query.lower()
+    <span class="k">return</span> sum(1 <span class="k">for</span> name <span class="k">in</span> known_names <span class="k">if</span> name.lower() <span class="k">in</span> q)
+
+
+<span class="k">def</span> <span class="f">classify</span>(query: str, known_names: set[str], cache_hit: bool = False) -&gt; RS:
+    <span class="k">if</span> cache_hit:                              <span class="k">return</span> RS.CACHED
+    <span class="k">if</span> _LIVE.search(query):                    <span class="k">return</span> RS.STRUCTURED
+    <span class="k">if</span> _GENERAL.search(query) <span class="k">and</span> _entity_count(query, known_names) == 0:
+        <span class="k">return</span> RS.DIRECT
+    <span class="k">if</span> _entity_count(query, known_names) &gt;= 2: <span class="k">return</span> RS.GRAPH
+    <span class="k">return</span> RS.HYBRID</pre>
+    <p><b>Note.</b> <code>_entity_count</code> counts matching name strings, so multiple aliases of one entity can push a single-entity query to GRAPH. Harmless — GRAPH and HYBRID both run the full retriever (see the retriever note in Section 11). <code>known_names</code> must include all aliases.</p>
+    <div class="acc"><b>Acceptance test.</b> <code>classify("what are the live odds", names)==STRUCTURED</code>; <code>classify("what is expected value", set())==DIRECT</code>; <code>classify("Mahomes and the Chiefs", {"mahomes","chiefs"})==GRAPH</code>; anything else → <code>HYBRID</code>.</div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/retrieval/dense.py</span><span class="badge gray">SPEC</span></div>
+    <p><b>Signature.</b> <code>def dense_search(query, embedder, vstore, collection, top_k) -&gt; list[tuple[str,float]]</code></p>
+    <p><b>Algorithm.</b> <code>return vstore.search(embedder.encode(query), collection, top_k)</code>. One line — kept as a module for symmetry and a future HyDE hook.</p>
+  </div>
+
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/retrieval/graph_rag.py</span><span class="badge gray">SPEC</span></div>
+    <p><b>Signature.</b> <code>def graph_search(query, kg, embedder, known_names, top_k) -&gt; list[tuple[str,float]]</code></p>
+    <p><b>Algorithm (numbered):</b> 1) <code>seeds = [resolve(name,kg,embedder)[0].id for name in extract_entities(query, known_names)]</code>; 2) <code>dist = kg.neighbors(seeds, SETTINGS.max_hops, SETTINGS.degree_cap)</code>; 3) gather <code>chunk_ids</code> from <code>source_chunks</code> of every reached entity; 4) score each chunk as <code>1/(1+hop_distance)</code>; 5) sort desc, return top_k.</p>
+    <p><b>Edge case.</b> No entities resolved in query → return <code>[]</code> (HYBRID still has dense+sparse).</p>
+    <div class="acc"><b>Acceptance test.</b> Query naming a seed entity returns chunks linked to entities 1–2 hops away, closer hops scored higher.</div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/retrieval/retriever.py</span><span class="badge gray">SPEC</span></div>
+    <p><b>Signature.</b> <code>HybridRetriever.search(req: RetrievalRequest, claim: AccessClaim) -&gt; tuple[RetrievalStrategy, list[RetrievalResult]]</code></p>
+    <p><b>Constructor deps.</b> <code>(bm25, embedder, vstore, mstore, kg, audit, known_names)</code>.</p>
+    <p><b>Algorithm (numbered):</b></p>
+<pre>0. inline helpers:
+   ids(pairs)         = [cid for cid, _ in pairs]
+   lookup(chunks,cid) = next(c for c in chunks if c.id == cid)
+   contained(cid)     = ",".join(n for n,l in [("dense",dense),("sparse",sparse),
+                                  ("graph",graph)] if cid in ids(l))
+1. strat = classify(req.query, self.known_names)
+2. if strat in (DIRECT, STRUCTURED, CACHED):
+       audit.record(req.agent_id, req.query, strat.value, [], 0)
+       return strat, []                       # agent answers WITHOUT retrieval
+3. dense  = dense_search(req.query, embedder, vstore, None, req.top_k)
+   sparse = bm25.search(req.query, req.top_k)
+   graph  = graph_search(req.query, kg, embedder, self.known_names, req.top_k) \
+            if req.include_graph else []
+4. fused  = rrf([ids(dense), ids(sparse), ids(graph)], SETTINGS.rrf_k)
+5. chunks = mstore.get_chunks([cid for cid, _ in fused])
+6. results, excluded = [], 0
+   for cid, score in fused:
+       chunk = lookup(chunks, cid)
+       if not permits(claim, chunk):           # governance INLINE
+           excluded += 1; continue
+       results.append(RetrievalResult(chunk=chunk, score=score,
+                      strategy=strat, explanation=contained(cid)))
+7. audit.record(req.agent_id, req.query, strat.value,
+                [r.chunk.id for r in results], excluded)
+8. return strat, results[:req.top_k]</pre>
+    <p><b>Note.</b> GRAPH falls through to step 3 just like HYBRID — in the prototype both run all three retrievers; the <code>strat</code> label is carried into each result for transparency, not branched on here.</p>
+    <div class="acc"><b>Acceptance test.</b> Returns a <code>(strategy, results)</code> tuple. A DIRECT query → <code>(DIRECT, [])</code>. The same HYBRID query under two claims differing in <code>max_sensitivity</code> → the lower-clearance claim returns fewer results and <code>audit.dump()</code> shows a non-zero <code>excluded_count</code>.</div>
+  </div>
+</div>
+
+<!-- 12 -->
+<hr /><div class="section" id="graph">
+  <div class="section-title">Section 12</div>
+  <h2>Graph &amp; entity resolution</h2>
+
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/graph/knowledge_graph.py</span><span class="badge green">FULL CODE</span></div>
+<pre><span class="k">from</span> collections <span class="k">import</span> defaultdict, deque
+<span class="k">from</span> nexus.core.models <span class="k">import</span> Entity, Relationship
+
+
+<span class="k">class</span> <span class="f">KnowledgeGraph</span>:
+    <span class="k">def</span> <span class="f">__init__</span>(self):
+        self.entities: dict[str, Entity] = {}             <span class="c"># id -&gt; Entity</span>
+        self.by_canon: dict[str, str] = {}                <span class="c"># canonical_name -&gt; id</span>
+        self.by_alias: dict[str, str] = {}                <span class="c"># alias -&gt; id</span>
+        self.adj: dict[str, list[tuple[str, float]]] = defaultdict(list)  <span class="c"># id -&gt; [(nbr,w)]</span>
+
+    <span class="k">def</span> <span class="f">upsert_entity</span>(self, e: Entity) -&gt; Entity:
+        self.entities[e.id] = e
+        self.by_canon[e.canonical_name.lower()] = e.id
+        <span class="k">for</span> a <span class="k">in</span> e.aliases:
+            self.by_alias[a.lower()] = e.id
+        <span class="k">return</span> e
+
+    <span class="k">def</span> <span class="f">upsert_relationship</span>(self, r: Relationship) -&gt; None:
+        self.adj[r.source_entity_id].append((r.target_entity_id, r.weight))
+        self.adj[r.target_entity_id].append((r.source_entity_id, r.weight))  <span class="c"># undirected traversal</span>
+
+    <span class="k">def</span> <span class="f">all_entities</span>(self) -&gt; list[Entity]:
+        <span class="k">return</span> list(self.entities.values())
+
+    <span class="k">def</span> <span class="f">neighbors</span>(self, seed_ids: list[str], max_hops: int,
+                  degree_cap: int) -&gt; dict[str, int]:
+        <span class="s">"""BFS returning {entity_id: hop_distance}. Expands top-`degree_cap` edges by weight."""</span>
+        dist: dict[str, int] = {s: 0 <span class="k">for</span> s <span class="k">in</span> seed_ids <span class="k">if</span> s <span class="k">in</span> self.entities}
+        q = deque(dist.keys())
+        <span class="k">while</span> q:
+            cur = q.popleft()
+            <span class="k">if</span> dist[cur] &gt;= max_hops:
+                <span class="k">continue</span>
+            top = sorted(self.adj[cur], key=<span class="k">lambda</span> nw: nw[1], reverse=True)[:degree_cap]
+            <span class="k">for</span> nbr, _w <span class="k">in</span> top:
+                <span class="k">if</span> nbr <span class="k">not in</span> dist:
+                    dist[nbr] = dist[cur] + 1
+                    q.append(nbr)
+        <span class="k">return</span> dist
+
+    <span class="k">def</span> <span class="f">create_entity</span>(self, name: str, entity_type=None) -&gt; Entity:
+        <span class="k">from</span> nexus.core.models <span class="k">import</span> EntityType
+        e = Entity(name=name, canonical_name=name,
+                   entity_type=entity_type <span class="k">or</span> EntityType.CHUNK, confidence=0.0)
+        <span class="k">return</span> self.upsert_entity(e)</pre>
+    <div class="acc"><b>Acceptance test.</b> Build A–B–C chain; <code>neighbors(["A"],2,8) == {"A":0,"B":1,"C":2}</code>; with <code>max_hops=1</code>, C is absent.</div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/graph/entity_resolution.py</span><span class="badge green">FULL CODE</span></div>
+<pre><span class="k">from</span> nexus.core.config <span class="k">import</span> SETTINGS
+<span class="k">from</span> nexus.core.utils <span class="k">import</span> levenshtein, cosine
+
+
+<span class="k">def</span> <span class="f">resolve</span>(name: str, kg, embedder) -&gt; tuple[<span class="s">"Entity"</span>, float]:
+    <span class="s">"""Confidence ladder. Never auto-merges below the configured threshold."""</span>
+    key = name.strip().lower()
+
+    <span class="c"># 1. exact canonical match</span>
+    <span class="k">if</span> key <span class="k">in</span> kg.by_canon:
+        <span class="k">return</span> kg.entities[kg.by_canon[key]], 1.0
+    <span class="c"># 2. alias match</span>
+    <span class="k">if</span> key <span class="k">in</span> kg.by_alias:
+        <span class="k">return</span> kg.entities[kg.by_alias[key]], 0.95
+    <span class="c"># 3. fuzzy (edit distance &lt;= 2)</span>
+    <span class="k">for</span> ent <span class="k">in</span> kg.all_entities():
+        <span class="k">if</span> levenshtein(key, ent.canonical_name.lower()) &lt;= 2:
+            <span class="k">return</span> ent, 0.80
+    <span class="c"># 4. embedding similarity</span>
+    qv = embedder.encode(name)
+    best, best_sim = None, 0.0
+    <span class="k">for</span> ent <span class="k">in</span> kg.all_entities():
+        <span class="k">if</span> ent.embedding:
+            sim = cosine(qv, ent.embedding)
+            <span class="k">if</span> sim &gt; best_sim:
+                best, best_sim = ent, sim
+    <span class="k">if</span> best <span class="k">and</span> best_sim &gt;= SETTINGS.embedding_sim_threshold:
+        <span class="k">return</span> best, 0.75
+    <span class="c"># 5. no confident match -&gt; create new, flagged (confidence 0.0)</span>
+    <span class="k">return</span> kg.create_entity(name), 0.0</pre>
+    <div class="acc"><b>Acceptance test.</b> Seed entity "Patrick Mahomes" (alias "P. Mahomes"): <code>resolve("Patrick Mahomes")</code> conf 1.0; <code>resolve("P. Mahomes")</code> conf 0.95; <code>resolve("Patrik Mahomes")</code> (typo) conf 0.80; <code>resolve("Zxqw")</code> conf 0.0 + new node.</div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/graph/ontology.py</span><span class="badge gray">SPEC</span></div>
+    <p><b>Purpose.</b> Reference data: the allowed relation types and which entity types they connect (LLD §8.3). A dict constant <code>RELATIONS = {"PLAYS_FOR": (PLAYER, TEAM), ...}</code> + a <code>validate(rel_type, src_type, tgt_type) -&gt; bool</code> helper used by <code>upsert_relationship</code> in strict mode.</p>
+  </div>
+</div>
+
+<!-- 13 -->
+<hr /><div class="section" id="memory">
+  <div class="section-title">Section 13</div>
+  <h2>Memory tiers</h2>
+
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/memory/working.py</span><span class="badge green">FULL CODE</span></div>
+<pre><span class="k">from</span> collections <span class="k">import</span> deque
+<span class="k">from</span> nexus.core.models <span class="k">import</span> MemoryTrace
+
+
+<span class="k">class</span> <span class="f">WorkingMemory</span>:
+    <span class="k">def</span> <span class="f">__init__</span>(self, capacity: int = 10):
+        self.buf: deque[MemoryTrace] = deque(maxlen=capacity)
+
+    <span class="k">def</span> <span class="f">push</span>(self, trace: MemoryTrace) -&gt; MemoryTrace | None:
+        <span class="s">"""Append; return the trace evicted by overflow, if any."""</span>
+        evicted = self.buf[0] <span class="k">if</span> len(self.buf) == self.buf.maxlen <span class="k">else</span> None
+        self.buf.append(trace)        <span class="c"># deque(maxlen) auto-drops the left item</span>
+        <span class="k">return</span> evicted
+
+    <span class="k">def</span> <span class="f">all</span>(self) -&gt; list[MemoryTrace]:
+        <span class="k">return</span> list(self.buf)</pre>
+    <div class="acc"><b>Acceptance test.</b> capacity 2; push t1,t2 → no eviction; push t3 → returns t1; <code>all()==[t2,t3]</code>.</div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/memory/episodic.py</span><span class="badge gray">SPEC</span> (compression algo = full)</div>
+    <p><b>Deps.</b> <code>(mstore, semantic, prov, summariser)</code>. Backed by <code>mstore</code> traces.</p>
+    <p><b>Signatures.</b> <code>store(trace)</code> · <code>should_compress(agent_id) -&gt; bool</code> · <code>compress(agent_id) -&gt; KnowledgeChunk</code>.</p>
+<pre><span class="k">def</span> <span class="f">should_compress</span>(self, agent_id):
+    <span class="k">return</span> len(self.mstore.load_traces(agent_id, only_uncompressed=True)) &gt;= SETTINGS.episodic_compress_at
+
+<span class="k">def</span> <span class="f">compress</span>(self, agent_id):
+    traces = self.mstore.load_traces(agent_id, only_uncompressed=True)
+    text   = <span class="s">"\n"</span>.join(f<span class="s">"{t.role}: {t.content}"</span> <span class="k">for</span> t <span class="k">in</span> traces)
+    summary = self.summariser(text)                    <span class="c"># LLM or extractive</span>
+    chunk = KnowledgeChunk(content=summary, domain=DataDomain.OPERATIONS,
+                           collection=<span class="s">"episodic_summaries"</span>).finalize()
+    self.semantic.store(chunk)                          <span class="c"># embeds + inserts + upserts (one path)</span>
+    self.prov.record(entity_id=chunk.id, activity=<span class="s">"episodic_compression"</span>,
+                     agent=agent_id, used=[t.id <span class="k">for</span> t <span class="k">in</span> traces], generated=[chunk.id])
+    self.mstore.mark_compressed([t.id <span class="k">for</span> t <span class="k">in</span> traces], chunk.id)   <span class="c"># mark, never delete</span>
+    <span class="k">return</span> chunk</pre>
+    <p><b>Extractive summariser fallback</b> (when no LLM): <code>def extractive(text, n=5): return " ".join(re.split(r"(?&lt;=[.!?])\s+", text)[:n])</code>. The composition root (§17) passes this <code>extractive</code> function as <code>summariser</code> — or a Claude-backed summariser when <code>anthropic</code> is available.</p>
+    <div class="acc"><b>Acceptance test.</b> Store 20 traces → <code>should_compress</code> True → <code>compress</code> returns a chunk and all 20 traces now have <code>compressed_into == chunk.id</code> (still present, not deleted).</div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/memory/semantic.py · procedural.py</span><span class="badge gray">SPEC</span></div>
+    <p><b>semantic.py</b> — wrapper with deps <code>(embedder, vstore, mstore)</code>. <code>store(chunk)</code>: <b>if <code>chunk.embedding is None</code>, first set <code>chunk.embedding = embedder.encode(chunk.content)</code></b> (so compressed summaries are searchable — otherwise dense search can never find them), then <code>vstore.upsert(chunk.id, chunk.embedding, chunk.collection)</code> + <code>mstore.insert_chunk(chunk)</code>. <code>active_entities(chunk_ids)</code> returns entity ids referenced by those chunks.</p>
+    <p><b>procedural.py</b> — <code>ProceduralMemory.register(name, fn)</code> / <code>get(name)</code> over an in-memory dict (the tool registry).</p>
+  </div>
+
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/memory/manager.py</span><span class="badge gray">SPEC</span></div>
+    <p><b>Constructor deps.</b> <code>(working, episodic, semantic, retriever)</code>.</p>
+    <p><b>Algorithm:</b></p>
+<pre><span class="k">def</span> <span class="f">acquire</span>(self, trace):
+    evicted = self.working.push(trace)
+    <span class="k">if</span> evicted: self.episodic.store(evicted)
+    <span class="k">if</span> self.episodic.should_compress(trace.agent_id):
+        self.episodic.compress(trace.agent_id)
+
+<span class="k">def</span> <span class="f">retrieve</span>(self, req, claim):           <span class="c"># returns (strategy, results)</span>
+    <span class="k">return</span> self.retriever.search(req, claim)
+
+<span class="k">def</span> <span class="f">compile_context</span>(self, agent_id, session_id, results):
+    <span class="k">return</span> AgentContext(agent_id=agent_id, session_id=session_id,
+        working_memory=self.working.all(), retrieved_knowledge=results,
+        active_entities=[e <span class="k">for</span> r <span class="k">in</span> results <span class="k">for</span> e <span class="k">in</span> r.chunk.entity_refs])</pre>
+    <div class="acc"><b>Acceptance test.</b> After <code>capacity+1</code> <code>acquire()</code> calls, episodic has ≥1 stored trace; <code>compile_context</code> returns an <code>AgentContext</code> whose <code>working_memory</code> length ≤ capacity.</div>
+  </div>
+</div>
+
+<!-- 14 -->
+<hr /><div class="section" id="governance">
+  <div class="section-title">Section 14</div>
+  <h2>Governance</h2>
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/governance/access.py</span><span class="badge green">FULL CODE</span></div>
+<pre><span class="k">from</span> nexus.core.models <span class="k">import</span> AccessClaim, KnowledgeChunk
+
+_LEVEL = {<span class="s">"PUBLIC"</span>: 0, <span class="s">"INTERNAL"</span>: 1, <span class="s">"CONFIDENTIAL"</span>: 2, <span class="s">"RESTRICTED"</span>: 3}
+GOVERNED_ATTRS = {<span class="s">"jurisdiction"</span>}        <span class="c"># only these metadata keys gate access</span>
+
+
+<span class="k">def</span> <span class="f">permits</span>(claim: AccessClaim, chunk: KnowledgeChunk) -&gt; bool:
+    <span class="s">"""Fail-closed ABAC. Returns True only if every check passes."""</span>
+    <span class="k">if</span> _LEVEL[chunk.sensitivity.value] &gt; _LEVEL[claim.max_sensitivity.value]:
+        <span class="k">return</span> False
+    <span class="k">if</span> chunk.domain <span class="k">not in</span> claim.domains:
+        <span class="k">return</span> False
+    <span class="k">if</span> claim.collections <span class="k">and</span> chunk.collection <span class="k">not in</span> claim.collections:
+        <span class="k">return</span> False
+    <span class="k">for</span> attr <span class="k">in</span> GOVERNED_ATTRS:
+        required = chunk.metadata.get(attr)
+        allowed = claim.attributes.get(attr)
+        <span class="k">if</span> required <span class="k">is</span> <span class="k">not</span> None <span class="k">and</span> allowed != <span class="s">"*"</span> <span class="k">and</span> allowed != required:
+            <span class="k">return</span> False
+    <span class="k">return</span> True</pre>
+    <p><b>Semantics.</b> A chunk tagged <code>metadata["jurisdiction"]="NJ"</code> is visible only to claims whose <code>attributes["jurisdiction"]</code> is <code>"NJ"</code> — or the wildcard <code>"*"</code> (a global principal that sees all jurisdictions). Chunks with no jurisdiction tag are not gated on it. Excluded chunks are dropped silently by the caller — never raised as an error (no existence leak).</p>
+    <div class="acc"><b>Acceptance test.</b> RESTRICTED chunk + INTERNAL claim → False. PUBLIC chunk, matching domain → True. NJ-tagged chunk + PA claim → False; + NJ claim → True; + <code>"*"</code> claim → True.</div>
+  </div>
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/governance/provenance.py</span><span class="badge gray">SPEC</span></div>
+    <p><b>Signature.</b> <code>ProvenanceStore.record(entity_id, activity, agent, used, generated) -&gt; ProvenanceRecord</code> — appends and returns the record. Used by ingestion and episodic compression.</p>
+    <div class="acc"><b>Acceptance test.</b> A compression call produces a record with <code>activity=="episodic_compression"</code>, <code>used</code>=trace ids, <code>generated</code>=[summary chunk id].</div>
+  </div>
+</div>
+
+<!-- 15 -->
+<hr /><div class="section" id="agent">
+  <div class="section-title">Section 15</div>
+  <h2>Agent</h2>
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/agents/base.py</span><span class="badge gray">SPEC</span> (think() = full)</div>
+<pre><span class="k">from</span> abc <span class="k">import</span> ABC, abstractmethod
+<span class="k">from</span> nexus.core.models <span class="k">import</span> MemoryTrace, RetrievalRequest, RetrievalStrategy
+
+
+<span class="k">class</span> <span class="f">BaseAgent</span>(ABC):
+    <span class="k">def</span> <span class="f">__init__</span>(self, agent_id, session_id, memory, claim):
+        self.agent_id, self.session_id = agent_id, session_id
+        self.memory, self.claim = memory, claim
+        self._turn = 0
+
+    <span class="k">def</span> <span class="f">think</span>(self, user_input: str) -&gt; str:
+        self._turn += 1
+        self.memory.acquire(MemoryTrace(agent_id=self.agent_id, session_id=self.session_id,
+            turn_index=self._turn, role=<span class="s">"user"</span>, content=user_input))
+        strat, results = self.memory.retrieve(RetrievalRequest(query=user_input,
+            agent_id=self.agent_id, session_id=self.session_id), self.claim)
+        ctx = self.memory.compile_context(self.agent_id, self.session_id, results)
+        ctx.retrieval_strategy_used = strat
+        answer = self._call_llm(ctx.context_string(), user_input, strat)
+        self._turn += 1
+        self.memory.acquire(MemoryTrace(agent_id=self.agent_id, session_id=self.session_id,
+            turn_index=self._turn, role=<span class="s">"assistant"</span>, content=answer))
+        <span class="k">return</span> answer
+
+    <span class="d">@abstractmethod</span>
+    <span class="k">def</span> <span class="f">_call_llm</span>(self, context: str, query: str, strategy: RetrievalStrategy) -&gt; str: ...
+
+
+<span class="k">class</span> <span class="f">ExtractiveAgent</span>(BaseAgent):
+    <span class="s">"""Offline default: answers by quoting retrieved context. No API key needed."""</span>
+    <span class="k">def</span> <span class="f">_call_llm</span>(self, context, query, strategy):
+        <span class="k">if</span> strategy == RetrievalStrategy.DIRECT:
+            <span class="k">return</span> <span class="s">"(general knowledge — no retrieval needed; an LLM answers here)"</span>
+        <span class="k">if</span> strategy == RetrievalStrategy.STRUCTURED:
+            <span class="k">return</span> <span class="s">"(routed to a live/structured source, not the knowledge store)"</span>
+        <span class="k">if</span> <span class="k">not</span> context.strip():
+            <span class="k">return</span> <span class="s">"I don't have grounded knowledge to answer that."</span>
+        <span class="k">return</span> f<span class="s">"Based on retrieved context:\n{context}"</span></pre>
+    <p><b>LLM hook (optional).</b> A <code>ClaudeAgent(BaseAgent)</code> subclass implements <code>_call_llm</code> by calling the Anthropic API with model <code>claude-sonnet-4-6</code>, passing <code>context</code> as system grounding and <code>query</code> as the user turn. Falls back to <code>ExtractiveAgent</code> if <code>anthropic</code> isn't installed.</p>
+    <div class="acc"><b>Acceptance test.</b> An <code>ExtractiveAgent</code> over the seed KB answers an NJ-boost query by quoting the compliance chunk; with an empty KB it returns the "no grounded knowledge" string.</div>
+  </div>
+</div>
+
+<!-- 16 -->
+<hr /><div class="section" id="seed">
+  <div class="section-title">Section 16</div>
+  <h2>Seed data (exact)</h2>
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/seed_data.py</span><span class="badge gray">SPEC</span></div>
+    <p><b>Signature.</b> <code>def build(embedder, vstore, mstore, kg) -&gt; None</code> — populates all stores with the demo KB.</p>
+    <p><b>Chunks to create</b> (content, domain, sensitivity, collection, metadata):</p>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>content (abbrev)</th><th>domain</th><th>sensitivity</th><th>metadata</th></tr></thead>
+      <tbody>
+        <tr><td>"Patrick Mahomes is the active QB for the Kansas City Chiefs…"</td><td>SPORTS</td><td>PUBLIC</td><td>—</td></tr>
+        <tr><td>"NJ requires 24h notice + compliance sign-off before any boosted-odds promo."</td><td>COMPLIANCE</td><td>INTERNAL</td><td>{"jurisdiction":"NJ"}</td></tr>
+        <tr><td>"PA boosted-odds promotions require state filing 48h ahead."</td><td>COMPLIANCE</td><td>INTERNAL</td><td>{"jurisdiction":"PA"}</td></tr>
+        <tr><td>"The OddsBoost feature supports player-prop markets…"</td><td>PRODUCT</td><td>INTERNAL</td><td>—</td></tr>
+        <tr><td>"Responsible-gaming rules mandate spend limits + self-exclusion."</td><td>COMPLIANCE</td><td>INTERNAL</td><td>—</td></tr>
+        <tr><td>"Internal incident postmortem: payout bug, customer PII a@b.com…"</td><td>OPERATIONS</td><td>RESTRICTED</td><td>—</td></tr>
+      </tbody>
+    </table></div>
+    <p><b>Entities</b> (canonical_name, type, aliases): Patrick Mahomes (PLAYER, ["P. Mahomes","Mahomes"]) · Kansas City Chiefs (TEAM, ["Chiefs","KC"]) · NFL (LEAGUE) · NFL MVP (MARKET) · Boost Policy (POLICY) · New Jersey (JURISDICTION, ["NJ"]) · OddsBoost (PRODUCT).</p>
+    <p><b>Relationships:</b> Mahomes→PLAYS_FOR→Chiefs · Chiefs→COMPETES_IN→NFL · NFL MVP→GOVERNED_BY→Boost Policy · Boost Policy→APPLIES_IN→New Jersey · OddsBoost→SUPPORTS→NFL MVP · Mahomes→DESCRIBED_BY→(sports chunk id).</p>
+    <p><b>Build steps (exact — this is what actually populates the stores):</b></p>
+<pre>1. for each chunk row:
+   c = KnowledgeChunk(content=..., domain=..., sensitivity=...,
+                      collection="default", metadata=...).finalize()
+   c.embedding = embedder.encode(c.content)          # REQUIRED for dense search
+   mstore.insert_chunk(c)                             # REQUIRED — retriever hydrates from here
+   vstore.upsert(c.id, c.embedding, c.collection)     # REQUIRED — else dense returns []
+2. for each entity row:
+   e = Entity(canonical_name=..., entity_type=..., aliases=...,
+              embedding=embedder.encode(canonical_name))
+   kg.upsert_entity(e)
+3. for each relationship: kg.upsert_relationship(Relationship(...))
+4. link BOTH directions for every (entity, chunk-that-mentions-it):
+   entity.source_chunks.append(chunk.id)             # forward — used by graph_search
+   chunk.entity_refs.append(entity.id)               # reverse — used by active_entities</pre>
+    <div class="acc"><b>Acceptance test.</b> After <code>build()</code>: <code>mstore</code> has 6 chunks each with a non-None <code>embedding</code>; a dense query for chunk text returns hits from <code>vstore</code>; <code>kg</code> has 7 entities (each embedded) + 6 relationships; the sports chunk's <code>entity_refs</code> contains the Mahomes entity id.</div>
+  </div>
+</div>
+
+<!-- 17 -->
+<hr /><div class="section" id="demo">
+  <div class="section-title">Section 17</div>
+  <h2>demo.py flow</h2>
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">demo.py</span><span class="badge gray">SPEC</span></div>
+    <p><b>Steps to print, in order:</b></p>
+<pre><span class="c"># ---- composition root: exact instantiation + injection order ----</span>
+embedder = get_embedder()
+vstore   = InMemoryVectorStore()
+mstore   = MetadataStore()                        <span class="c"># dict-backed prototype</span>
+kg       = KnowledgeGraph()
+audit    = AuditLog()
+bm25     = BM25Index()
+prov     = ProvenanceStore()
+
+seed_data.build(embedder, vstore, mstore, kg)     <span class="c"># populates mstore + vstore + kg</span>
+for c in mstore.all_chunks(): bm25.add(c.id, c.content)
+known_names = {n.lower() for e in kg.all_entities()
+                          for n in [e.canonical_name, *e.aliases]}
+
+retriever = HybridRetriever(bm25, embedder, vstore, mstore, kg, audit, known_names)
+semantic  = SemanticMemory(embedder, vstore, mstore)
+episodic  = EpisodicMemory(mstore, semantic, prov, summariser=extractive)
+memory    = MemoryManager(WorkingMemory(SETTINGS.working_capacity),
+                          episodic, semantic, retriever)
+
+A = ExtractiveAgent("agentA", "s1", memory, AccessClaim(principal_id="A",
+        domains=[every DataDomain], max_sensitivity=RESTRICTED,
+        attributes={"jurisdiction": "*"}))          <span class="c"># global principal</span>
+B = ExtractiveAgent("agentB", "s2", memory, AccessClaim(principal_id="B",
+        domains=[SPORTS, PRODUCT, COMPLIANCE], max_sensitivity=INTERNAL,
+        attributes={"jurisdiction": "NJ"}))          <span class="c"># NJ analyst</span>
+
+<span class="c"># ---- scripted queries: print (route, governed results, answer) ----</span>
+"Who is Patrick Mahomes?"               <span class="c"># GRAPH/HYBRID -> sports chunk (both agents)</span>
+"What is expected value?"               <span class="c"># DIRECT -> no retrieval</span>
+"NJ boosted odds rules?"  (A, then B)   <span class="c"># A: NJ + PA ; B: NJ only (PA = wrong jurisdiction)</span>
+"Show the incident postmortem" (A, B)   <span class="c"># A: sees RESTRICTED ; B: excluded silently</span>
+
+<span class="c"># ---- memory + audit ----</span>
+loop 21 dummy turns through A            <span class="c"># working evicts -> episodic compresses -> semantic</span>
+print(audit.dump())</pre>
+    <div class="callout good"><b>This is the script recorded for the demo video.</b> It must run via <code>python demo.py</code> with zero installs (fallbacks active) and again with full deps.</div>
+  </div>
+</div>
+
+<!-- 18 -->
+<hr /><div class="section" id="eval">
+  <div class="section-title">Section 18</div>
+  <h2>Eval harness — <span class="badge green">FULL CODE</span></h2>
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/eval/metrics.py</span><span class="badge green">FULL CODE</span></div>
+<pre><span class="k">import</span> math
+
+
+<span class="k">def</span> <span class="f">recall_at_k</span>(retrieved: list[str], relevant: set[str], k: int) -&gt; float:
+    <span class="k">if</span> <span class="k">not</span> relevant: <span class="k">return</span> 0.0
+    hit = len(set(retrieved[:k]) &amp; relevant)
+    <span class="k">return</span> hit / len(relevant)
+
+
+<span class="k">def</span> <span class="f">mrr</span>(retrieved: list[str], relevant: set[str]) -&gt; float:
+    <span class="k">for</span> i, cid <span class="k">in</span> enumerate(retrieved, 1):
+        <span class="k">if</span> cid <span class="k">in</span> relevant:
+            <span class="k">return</span> 1.0 / i
+    <span class="k">return</span> 0.0
+
+
+<span class="k">def</span> <span class="f">ndcg_at_k</span>(retrieved: list[str], relevant: set[str], k: int) -&gt; float:
+    dcg = sum((1.0 / math.log2(i + 2)) <span class="k">for</span> i, cid <span class="k">in</span> enumerate(retrieved[:k]) <span class="k">if</span> cid <span class="k">in</span> relevant)
+    ideal = sum(1.0 / math.log2(i + 2) <span class="k">for</span> i <span class="k">in</span> range(min(len(relevant), k)))
+    <span class="k">return</span> dcg / ideal <span class="k">if</span> ideal &gt; 0 <span class="k">else</span> 0.0</pre>
+    <div class="acc"><b>Acceptance test.</b> <code>recall_at_k(["a","b"],{"a"},2)==1.0</code> · <code>mrr(["x","a"],{"a"})==0.5</code> · perfect ranking → <code>ndcg_at_k==1.0</code>.</div>
+  </div>
+  <div class="spec">
+    <div class="spec-head"><span class="modtag">nexus/eval/golden.py</span><span class="badge gray">SPEC</span></div>
+    <p><b>Purpose.</b> Hold (query → set of relevant chunk_ids) pairs and a <code>run(retriever, claim) -&gt; dict</code> that averages the Section-18 metrics over the set. A threshold check (<code>recall@10 &gt;= 0.9</code>) is the CI gate.</p>
+  </div>
+</div>
+
+<!-- 19 -->
+<hr /><div class="section" id="tests">
+  <div class="section-title">Section 19</div>
+  <h2>Test suite</h2>
+  <p>Each module's acceptance test becomes a pytest. Minimum coverage:</p>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>File</th><th>Covers</th></tr></thead>
+    <tbody>
+      <tr><td><code>test_retrieval.py</code></td><td><code>rrf()</code> ordering · BM25 ranking · <code>classify()</code> routes · end-to-end <code>retriever.search</code></td></tr>
+      <tr><td><code>test_governance.py</code></td><td><code>permits()</code> full matrix (sensitivity × domain × jurisdiction) · audit excluded_count</td></tr>
+      <tr><td><code>test_memory.py</code></td><td>working eviction · episodic compression marks (not deletes) · manager wiring</td></tr>
+      <tr><td><code>test_graph.py</code></td><td><code>neighbors()</code> hop caps · <code>resolve()</code> confidence ladder</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<!-- 20 -->
+<hr /><div class="section" id="run">
+  <div class="section-title">Section 20</div>
+  <h2>How to run</h2>
+  <pre><span class="c"># zero-config — runs on stdlib alone (fallbacks active)</span>
+cd nexus_platform
+python demo.py
+
+<span class="c"># full fidelity — real embeddings, vector DB, LLM</span>
+python -m venv .venv
+.venv\Scripts\activate        <span class="c"># Windows</span>
+pip install -r requirements.txt
+python demo.py
+
+<span class="c"># tests</span>
+pip install pytest
+pytest -q</pre>
+  <div class="callout warn"><strong>Prerequisite:</strong> this machine currently has no working Python (Microsoft Store stub + broken venvs). Install Python 3.10+ before the build/record phase.</div>
+  <div style="height:24px"></div>
+</div>
+
+</div>
+
+<footer style="border-top:1px solid var(--border); margin-top:60px; padding:24px 48px; color:var(--muted); font-size:12px; max-width:1120px; margin:60px auto 0; display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px">
+  <span>NEXUS — Implementation Guide (detailed build spec)</span>
+  <span>Author: Aditya Shrivastava</span>
+</footer>
+
+</body>
+</html>
+
+
