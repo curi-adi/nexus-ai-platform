@@ -37,3 +37,6 @@ secrets.json
 
 # Local-only docs (not for remote)
 DEMO_GUIDE.md
+
+# Large media files
+nexus-walkthrough.mp4
