@@ -34,3 +34,6 @@ secrets.json
 
 # Logs
 *.log
+
+# Local-only docs (not for remote)
+DEMO_GUIDE.md
